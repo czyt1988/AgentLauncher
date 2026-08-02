@@ -1,0 +1,69 @@
+site_name: AgentLauncher
+site_description: Launch AI coding agent web UIs from one card grid. Qt6/QML + C++.
+site_url: https://agentlauncher.dev
+repo_url: https://github.com/AgentLauncher/AgentLauncher
+repo_name: AgentLauncher/AgentLauncher
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    - scheme: default
+      primary: deep orange
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep orange
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: folder
+      languages:
+        - locale: en
+          name: English
+          default: true
+          build: true
+          nav:
+            - Home: index.md
+            - Configuration: configuration.md
+            - Development: development.md
+        - locale: zh
+          name: 中文
+          build: true
+          nav:
+            - 首页: index.md
+            - 配置: configuration.md
+            - 开发: development.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+
+extra:
+  alternate:
+    - name: English
+      link: /AgentLauncher/
+      lang: en
+    - name: 中文
+      link: /AgentLauncher/zh/
+      lang: zh
