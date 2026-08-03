@@ -8,8 +8,11 @@ Page {
 
     background: Rectangle { color: "#1e1e2e" }
 
-    // Load agent data once on appear.
-    property var data: agentModel.agent(agentId)
+    // Load agent data once on appear. NOTE: do not name this `data` — that
+    // collides with QQuickItem's built-in `data` (children group, non-NOTIFY),
+    // so child bindings silently resolved to the wrong property and fields
+    // came up empty.
+    property var agentData: agentModel.agent(agentId)
 
     ColumnLayout {
         anchors.fill: parent
@@ -29,7 +32,7 @@ Page {
         }
 
         Label {
-            text: data.name || qsTr("Configure Agent")
+            text: agentData.name || qsTr("Configure Agent")
             color: "#cdd6f4"
             font.pixelSize: 24
             font.bold: true
@@ -43,7 +46,7 @@ Page {
         TextField {
             id: commandField
             Layout.fillWidth: true
-            text: data.command || ""
+            text: agentData.command || ""
             color: "#cdd6f4"
             placeholderText: qsTr("e.g. kimi web --port 58628")
             background: Rectangle { color: "#313244"; radius: 8; border.color: "#45475a" }
@@ -57,7 +60,7 @@ Page {
         TextField {
             id: webUrlField
             Layout.fillWidth: true
-            text: data.webUrl || ""
+            text: agentData.webUrl || ""
             color: "#cdd6f4"
             placeholderText: qsTr("e.g. http://127.0.0.1:58628")
             background: Rectangle { color: "#313244"; radius: 8; border.color: "#45475a" }
@@ -80,7 +83,7 @@ Page {
             }
             Label {
                 id: dirLabel
-                text: data.configDir || qsTr("(not set)")
+                text: agentData.configDir || qsTr("(not set)")
                 color: "#89b4fa"
                 font.pixelSize: 13
                 Layout.fillWidth: true
@@ -88,7 +91,7 @@ Page {
             }
             Button {
                 text: qsTr("Open")
-                enabled: (data.configDir || "").length > 0
+                enabled: (agentData.configDir || "").length > 0
                 background: Rectangle { radius: 8; color: parent.down ? "#45475a" : (parent.hovered ? "#4a4d62" : "#313244"); border.color: "#45475a" }
                 contentItem: Label { text: parent.text; color: "#cdd6f4"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                 onClicked: launcher.openConfigDir(page.agentId)
@@ -109,7 +112,7 @@ Page {
             }
             Button {
                 text: qsTr("Save")
-                background: Rectangle { radius: 8; color: parent.down ? Qt.darker(data.color || "#89b4fa", 1.3) : (data.color || "#89b4fa") }
+                background: Rectangle { radius: 8; color: parent.down ? Qt.darker(agentData.color || "#89b4fa", 1.3) : (agentData.color || "#89b4fa") }
                 contentItem: Label { text: parent.text; color: "#ffffff"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                 onClicked: {
                     launcher.updateAgent(page.agentId, commandField.text, webUrlField.text)
