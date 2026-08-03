@@ -25,6 +25,7 @@ cmake_install.cmake
 .cache/
 .vscode/
 .idea/
+.zcode/
 *.swp
 
 # OS
