@@ -36,23 +36,110 @@ void AgentLauncher::launch(const QString &id)
 
     // Split command into program + arguments on whitespace.
     const QStringList parts = QProcess::splitCommand(command);
-    if (parts.isEmpty())
+    if (parts.isEmpty()) {
+        emit launchFailed(id, tr("Startup command is empty."));
         return;
+    }
 
     const QString program = parts.first();
     const QStringList args = parts.mid(1);
 
+    // Resolve the bare program through PATH (PATHEXT on Windows) so npm-style
+    // .cmd/.bat shims (e.g. "qwen" -> "qwen.cmd") are found. CreateProcess on
+    // its own does not try those extensions, which is why "qwen serve" failed
+    // silently before.
+    const QString resolved = resolveProgram(program);
+    if (resolved.isEmpty()) {
+        const QString msg = tr("Cannot find '%1' on your PATH. "
+                               "Make sure it is installed and on PATH.")
+                                .arg(program);
+        qWarning() << "AgentLauncher: launch failed for" << id << "-" << msg;
+        emit launchFailed(id, msg);
+        return;
+    }
+
     // startDetached so the agent keeps running after this launcher closes.
     QProcess proc;
-    proc.setProgram(program);
-    proc.setArguments(args);
-    proc.setWorkingDirectory(QStandardPaths::writableLocation(QStandardPaths::HomeLocation));
-    bool ok = proc.startDetached();
-
-    if (ok) {
-        // Re-check shortly so the card flips to running fast.
-        QTimer::singleShot(1500, this, &AgentLauncher::checkAll);
+#ifdef Q_OS_WIN
+    // A .cmd/.bat shim cannot be executed directly by CreateProcess; run it
+    // through cmd.exe so the batch is interpreted (and a /T kill later covers
+    // the whole cmd -> qwen.cmd -> node tree).
+    if (resolved.endsWith(QStringLiteral(".cmd"), Qt::CaseInsensitive)
+        || resolved.endsWith(QStringLiteral(".bat"), Qt::CaseInsensitive)) {
+        proc.setProgram(QStringLiteral("cmd"));
+        QStringList cmdArgs;
+        cmdArgs << QStringLiteral("/c") << resolved << args;
+        proc.setArguments(cmdArgs);
+    } else
+#endif
+    {
+        proc.setProgram(resolved);
+        proc.setArguments(args);
     }
+    proc.setWorkingDirectory(QStandardPaths::writableLocation(QStandardPaths::HomeLocation));
+
+    qint64 pid = 0;
+    const bool ok = proc.startDetached(&pid);
+    if (!ok) {
+        const QString msg = tr("Failed to start '%1'.").arg(program);
+        qWarning() << "AgentLauncher: startDetached failed for" << id << "-"
+                   << msg;
+        emit launchFailed(id, msg);
+        return;
+    }
+
+    m_pids.insert(id, pid);
+
+    // Mark the card as "launching" so the action button shows a spinner until
+    // the health check confirms the server is up — or a 30s safety timeout
+    // fires in case the agent crashes on boot. The epoch guards against a
+    // stale timeout from an earlier attempt clearing a newer launch.
+    const int epoch = ++m_launchEpoch[id];
+    m_model->setLaunching(id, true);
+    QTimer::singleShot(30000, this, [this, id, epoch]() {
+        if (m_launchEpoch.value(id) == epoch)
+            m_model->setLaunching(id, false);
+    });
+
+    // Re-check shortly so the card flips to running fast.
+    QTimer::singleShot(1500, this, &AgentLauncher::checkAll);
+}
+
+bool AgentLauncher::stop(const QString &id)
+{
+    const auto it = m_pids.constFind(id);
+    if (it == m_pids.constEnd() || *it == 0) {
+        const QString msg = tr("This agent wasn't started from the launcher; "
+                               "stop it with its own command.");
+        qWarning() << "AgentLauncher: cannot stop" << id << "-" << msg;
+        emit launchFailed(id, msg);
+        return false;
+    }
+
+    const qint64 pid = *it;
+    m_pids.erase(it);
+
+    bool ok = false;
+#ifdef Q_OS_WIN
+    // /F force, /T kills the whole process tree (cmd -> qwen.cmd -> node).
+    ok = QProcess::startDetached(
+        QStringLiteral("taskkill"),
+        { QStringLiteral("/F"), QStringLiteral("/T"),
+          QStringLiteral("/PID"), QString::number(pid) });
+#else
+    ok = QProcess::startDetached(
+        QStringLiteral("kill"),
+        { QStringLiteral("-9"), QString::number(pid) });
+#endif
+    if (!ok) {
+        const QString msg = tr("Failed to stop process (PID %1).").arg(pid);
+        qWarning() << "AgentLauncher:" << msg;
+        emit launchFailed(id, msg);
+    }
+
+    // Re-check so the card flips back to Stopped once the port is down.
+    QTimer::singleShot(1500, this, &AgentLauncher::checkAll);
+    return ok;
 }
 
 void AgentLauncher::openWeb(const QString &id)
@@ -126,6 +213,9 @@ void AgentLauncher::checkAll()
                 const int code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
                 up = (code > 0);
             }
+            // Once the server is up, the launch is done: clear the spinner.
+            if (up)
+                m_model->setLaunching(id, false);
             m_model->setRunning(id, up);
             reply->deleteLater();
         });
@@ -153,4 +243,14 @@ QString AgentLauncher::expandEnv(const QString &path) const
     out.replace(QStringLiteral("~/"),
                 QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + QStringLiteral("/"));
     return out;
+}
+
+QString AgentLauncher::resolveProgram(const QString &program)
+{
+    if (program.isEmpty())
+        return QString();
+    // findExecutable searches PATH and, on Windows, appends the PATHEXT
+    // extensions (.exe/.cmd/.bat/...), which is exactly what is needed to
+    // resolve npm-style shims like "qwen" -> "qwen.cmd".
+    return QStandardPaths::findExecutable(program);
 }

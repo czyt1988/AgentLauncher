@@ -29,6 +29,7 @@ QVariant AgentModel::data(const QModelIndex &index, int role) const
     case IconRole:      return a.icon;
     case ColorRole:     return a.color;
     case RunningRole:   return a.running;
+    case LaunchingRole: return a.launching;
     }
     return {};
 }
@@ -43,7 +44,8 @@ QHash<int, QByteArray> AgentModel::roleNames() const
         { ConfigDirRole, "configDir" },
         { IconRole,      "icon" },
         { ColorRole,     "color" },
-        { RunningRole,   "running" }
+        { RunningRole,   "running" },
+        { LaunchingRole, "launching" }
     };
 }
 
@@ -76,6 +78,7 @@ QVariantMap AgentModel::agent(const QString &id) const
             m[QStringLiteral("icon")] = a.icon;
             m[QStringLiteral("color")] = a.color;
             m[QStringLiteral("running")] = a.running;
+            m[QStringLiteral("launching")] = a.launching;
             break;
         }
     }
@@ -92,4 +95,16 @@ void AgentModel::setRunning(const QString &id, bool running)
     m_agents[row].running = running;
     const QModelIndex idx = index(row, 0);
     emit dataChanged(idx, idx, { RunningRole });
+}
+
+void AgentModel::setLaunching(const QString &id, bool launching)
+{
+    const int row = indexOf(id);
+    if (row < 0)
+        return;
+    if (m_agents[row].launching == launching)
+        return;
+    m_agents[row].launching = launching;
+    const QModelIndex idx = index(row, 0);
+    emit dataChanged(idx, idx, { LaunchingRole });
 }

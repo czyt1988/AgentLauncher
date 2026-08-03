@@ -53,5 +53,29 @@ hard-code agent entries in C++.
 ## Don't
 
 - Don't hard-code agent definitions in C++.
-- Don't add a "stop agent" feature (each agent manages its own lifecycle).
 - Don't run `git commit`/`git push` unless explicitly asked.
+
+## Stopping agents
+
+Cards show a subtle × in the top-right corner while an agent is running.
+Clicking it terminates the process tree **this launcher started this
+session** — `launch()` records the PID returned by `startDetached`, and
+`stop()` runs `taskkill /F /T /PID …` (Windows) so the whole
+`cmd → .cmd → node` tree dies. PIDs are in-memory only, so:
+
+- An agent detected as running via the HTTP health check but **not started
+  from this launcher** has no PID; `stop()` shows a message instead of
+  killing anything. Stop those via their own command.
+- After the launcher restarts, PIDs are lost — running agents detected by
+  health check can't be stopped from the card until re-launched here.
+
+Force-kill is intentional for a dev-server launcher; agents that need
+graceful shutdown should still be stopped via their own command.
+
+## Launching on Windows
+
+`launch()` resolves the bare program via `QStandardPaths::findExecutable`
+(which applies PATHEXT), then runs `.cmd`/`.bat` shims through `cmd /c` —
+`CreateProcess` alone won't find npm-style shims like `qwen.cmd`. Launch
+failures emit `launchFailed(id, message)`; the UI shows an at-place red flash
+on the card plus a popup with the reason.

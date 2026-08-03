@@ -14,6 +14,7 @@ struct Agent
     QString icon;
     QString color;
     bool running = false;
+    bool launching = false; // transient UI state, never persisted
 };
 
 class AgentConfig

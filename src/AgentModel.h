@@ -18,7 +18,8 @@ public:
         ConfigDirRole,
         IconRole,
         ColorRole,
-        RunningRole
+        RunningRole,
+        LaunchingRole
     };
     Q_ENUM(Roles)
 
@@ -36,6 +37,7 @@ public:
 
 public slots:
     void setRunning(const QString &id, bool running);
+    void setLaunching(const QString &id, bool launching);
 
 private:
     QList<Agent> m_agents;
