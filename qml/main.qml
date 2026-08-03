@@ -24,11 +24,12 @@ ApplicationWindow {
         id: homePage
 
         ScrollView {
+            id: scrollView
             clip: true
             contentWidth: availableWidth
 
             ColumnLayout {
-                width: parent.availableWidth
+                width: scrollView.availableWidth
                 spacing: 8
 
                 Label {
