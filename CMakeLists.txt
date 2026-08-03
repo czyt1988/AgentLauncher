@@ -36,6 +36,7 @@ qt_add_resources(AgentLauncher "app_resources"
         config/default_agents.json
         icons/kimi-code.svg
         icons/opencode.svg
+        icons/openclaw.svg
         icons/qwen-code.svg
         qml/main.qml
         qml/AgentCard.qml

@@ -26,6 +26,15 @@
             "configDir": "%USERPROFILE%/.qwen",
             "icon": "qrc:/icons/qwen-code.svg",
             "color": "#8B5CF6"
+        },
+        {
+            "id": "openclaw",
+            "name": "OpenClaw",
+            "command": "openclaw gateway --port 18789 --verbose",
+            "webUrl": "http://127.0.0.1:18789",
+            "configDir": "%USERPROFILE%/.openclaw",
+            "icon": "qrc:/icons/openclaw.svg",
+            "color": "#DC2626"
         }
     ]
 }
