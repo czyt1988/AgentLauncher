@@ -34,10 +34,17 @@ docs/        MkDocs site (English + zh/)
 ## Config schema (agents.json)
 
 Each agent object has: `id`, `name`, `command`, `webUrl`, `configDir`, `icon`,
-`color`, `installCommand`, `updateCommand`, `versionCommand`. See
-`config/default_agents.json`. New agents are added by editing this file (and
+`color`, `installCommand`, `updateCommand`, `versionCommand`, `setupCommand`.
+See `config/default_agents.json`. New agents are added by editing this file (and
 the on-disk copy at `AppConfigLocation/agents.json`). Do **not** hard-code
 agent entries in C++.
+
+The `setupCommand` field is optional — it holds a one-time command that runs
+before the first launch of an agent (e.g. generating a bearer token for
+`qwen serve`). If the command exits with code 0, the result is persisted to
+`AppConfigLocation/agent_state.json` and the command is never re-run unless
+the user picks "重新初始化" from the card's context menu. An empty
+`setupCommand` means no prerequisite — the agent launches directly.
 
 On load, `AgentConfig::load()` merges the bundled default into the on-disk
 config: any field that is empty on disk is filled from the default, and any
@@ -54,6 +61,10 @@ is persisted back to disk if anything changed.
   response = running; connection refused/timeout = stopped). Do not add
   process-sniffing logic — keep it HTTP-based for cross-tool consistency.
 - Launch uses `QProcess::startDetached` so agents survive the launcher closing.
+- If `setupCommand` is set and hasn't been run yet (tracked in
+  `agent_state.json`), `launch()` runs it first via `cmd /c` (no visible
+  window) and only proceeds to the actual launch command on exit code 0.
+  Failures emit `launchFailed(id, message)` with the captured output.
 - Environment variables in `configDir` use `%VAR%` (Windows) form; the launcher
   expands them. `~` is also expanded to the home dir.
 - When changing QML, keep the dark theme colors (Catppuccin Mocha palette).

@@ -73,6 +73,27 @@ Page {
             wrapMode: Text.WordWrap
         }
 
+        Label {
+            text: qsTr("首次运行设置命令")
+            color: "#a6adc8"
+            font.pixelSize: 13
+        }
+        TextField {
+            id: setupCommandField
+            Layout.fillWidth: true
+            text: agentData.setupCommand || ""
+            color: "#cdd6f4"
+            placeholderText: qsTr("首次启动前运行的一次性命令（可选）")
+            background: Rectangle { color: "#313244"; radius: 8; border.color: "#45475a" }
+        }
+        Label {
+            text: qsTr("留空则无前置操作。成功运行一次后不再重复。")
+            color: "#6c7086"
+            font.pixelSize: 11
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+        }
+
         RowLayout {
             spacing: 12
 
@@ -115,7 +136,7 @@ Page {
                 background: Rectangle { radius: 8; color: parent.down ? Qt.darker(agentData.color || "#89b4fa", 1.3) : (agentData.color || "#89b4fa") }
                 contentItem: Label { text: parent.text; color: "#ffffff"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                 onClicked: {
-                    launcher.updateAgent(page.agentId, commandField.text, webUrlField.text)
+                    launcher.updateAgent(page.agentId, commandField.text, webUrlField.text, setupCommandField.text)
                     page.StackView.view.pop()
                 }
             }

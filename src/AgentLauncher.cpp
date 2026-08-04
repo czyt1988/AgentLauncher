@@ -3,7 +3,11 @@
 
 #include <QDesktopServices>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
+#include <QIODevice>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QPointer>
@@ -24,12 +28,32 @@ AgentLauncher::AgentLauncher(AgentModel *model, QObject *parent)
 
 void AgentLauncher::start()
 {
+    loadSetupState();
     checkAll();
     checkVersions();
     m_timer->start(3000);
 }
 
 void AgentLauncher::launch(const QString &id)
+{
+    const int row = m_model->indexOf(id);
+    if (row < 0)
+        return;
+
+    const Agent &a = m_model->agents().at(row);
+
+    // If the agent has a one-time setup command that hasn't been run yet,
+    // run it first; doLaunch() is called from the setup's finished handler
+    // on success.
+    if (!a.setupCommand.isEmpty() && !a.setupDone) {
+        runSetup(id);
+        return;
+    }
+
+    doLaunch(id);
+}
+
+void AgentLauncher::doLaunch(const QString &id)
 {
     const int row = m_model->indexOf(id);
     if (row < 0)
@@ -196,7 +220,7 @@ void AgentLauncher::openConfigDir(const QString &id)
     QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
 }
 
-bool AgentLauncher::updateAgent(const QString &id, const QString &command, const QString &webUrl)
+bool AgentLauncher::updateAgent(const QString &id, const QString &command, const QString &webUrl, const QString &setupCommand)
 {
     QList<Agent> &agents = m_model->agents();
     bool changed = false;
@@ -204,6 +228,7 @@ bool AgentLauncher::updateAgent(const QString &id, const QString &command, const
         if (a.id == id) {
             a.command = command;
             a.webUrl = webUrl;
+            a.setupCommand = setupCommand;
             changed = true;
             break;
         }
@@ -215,7 +240,7 @@ bool AgentLauncher::updateAgent(const QString &id, const QString &command, const
     const int row = m_model->indexOf(id);
     if (row >= 0) {
         const QModelIndex idx = m_model->index(row, 0);
-        emit m_model->dataChanged(idx, idx, { AgentModel::CommandRole, AgentModel::WebUrlRole });
+        emit m_model->dataChanged(idx, idx, { AgentModel::CommandRole, AgentModel::WebUrlRole, AgentModel::SetupCommandRole });
     }
 
     // Persist to disk.
@@ -341,6 +366,130 @@ QString AgentLauncher::extractVersion(const QString &output)
     return match.hasMatch() ? match.captured(1) : QString();
 }
 
+// --- Setup (first-run prerequisite) ----------------------------------------
+
+void AgentLauncher::runSetup(const QString &id)
+{
+    const int row = m_model->indexOf(id);
+    if (row < 0)
+        return;
+    const QString cmd = m_model->agents().at(row).setupCommand;
+    if (cmd.isEmpty())
+        return;
+
+    m_model->setSetupping(id, true);
+
+    auto *proc = new QProcess(this);
+    proc->setProgram(QStringLiteral("cmd"));
+    proc->setArguments({QStringLiteral("/c"), cmd});
+    // Default channel mode → CREATE_NO_WINDOW → no visible console.
+
+    const QString capturedId = id;
+    connect(proc, &QProcess::finished, this,
+            [this, capturedId, proc](int exitCode, QProcess::ExitStatus) {
+                m_model->setSetupping(capturedId, false);
+
+                if (exitCode == 0) {
+                    markSetupDone(capturedId);
+                    // Proceed with the actual launch.
+                    doLaunch(capturedId);
+                } else {
+                    const QString errOutput =
+                        QString::fromLocal8Bit(proc->readAllStandardError());
+                    const QString stdOutput =
+                        QString::fromLocal8Bit(proc->readAllStandardOutput());
+                    QString detail = errOutput.isEmpty() ? stdOutput : errOutput;
+                    if (detail.isEmpty())
+                        detail = tr("(no output)");
+                    emit launchFailed(capturedId,
+                        tr("Setup command failed (exit code %1):\n%2")
+                            .arg(exitCode)
+                            .arg(detail.trimmed()));
+                }
+                proc->deleteLater();
+            });
+
+    connect(proc, &QProcess::errorOccurred, this,
+            [this, capturedId, proc](QProcess::ProcessError) {
+                if (proc->state() == QProcess::NotRunning) {
+                    m_model->setSetupping(capturedId, false);
+                    emit launchFailed(capturedId,
+                        tr("Failed to start setup command."));
+                    proc->deleteLater();
+                }
+            });
+
+    // Safety timeout: kill hung setup commands after 30s.
+    QTimer::singleShot(30000, proc, [proc]() {
+        if (proc->state() != QProcess::NotRunning)
+            proc->kill();
+    });
+
+    proc->start();
+}
+
+// --- Setup state persistence -----------------------------------------------
+
+QString AgentLauncher::stateFilePath() const
+{
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    return dir + QStringLiteral("/agent_state.json");
+}
+
+void AgentLauncher::loadSetupState()
+{
+    QFile file(stateFilePath());
+    if (!file.open(QIODevice::ReadOnly))
+        return;
+
+    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    const QJsonObject root = doc.object();
+
+    for (Agent &a : m_model->agents()) {
+        const QJsonObject agentState = root.value(a.id).toObject();
+        if (agentState.value(QStringLiteral("setupDone")).toBool())
+            a.setupDone = true;
+    }
+}
+
+void AgentLauncher::markSetupDone(const QString &id)
+{
+    m_model->setSetupDone(id, true);
+
+    // Persist to agent_state.json.
+    QFile file(stateFilePath());
+    QJsonObject root;
+    if (file.open(QIODevice::ReadOnly)) {
+        root = QJsonDocument::fromJson(file.readAll()).object();
+        file.close();
+    }
+
+    QJsonObject agentState = root.value(id).toObject();
+    agentState[QStringLiteral("setupDone")] = true;
+    root[id] = agentState;
+
+    QDir().mkpath(QFileInfo(stateFilePath()).absolutePath());
+    if (file.open(QIODevice::WriteOnly))
+        file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+}
+
+void AgentLauncher::resetSetup(const QString &id)
+{
+    m_model->setSetupDone(id, false);
+
+    // Remove from agent_state.json.
+    QFile file(stateFilePath());
+    if (!file.open(QIODevice::ReadOnly))
+        return;
+
+    QJsonObject root = QJsonDocument::fromJson(file.readAll()).object();
+    file.close();
+    root.remove(id);
+
+    if (file.open(QIODevice::WriteOnly))
+        file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+}
+
 // --- Install / Update -----------------------------------------------------
 
 void AgentLauncher::install(const QString &id)
@@ -349,6 +498,11 @@ void AgentLauncher::install(const QString &id)
     if (row < 0)
         return;
     const Agent &a = m_model->agents().at(row);
+
+    if (a.running) {
+        emit launchFailed(id, tr("请先关闭 %1 后再进行安装/更新。").arg(a.name));
+        return;
+    }
     if (a.installCommand.isEmpty()) {
         emit installFinished(id, false,
             tr("No install command configured for %1.").arg(a.name));
@@ -359,26 +513,41 @@ void AgentLauncher::install(const QString &id)
 
     auto *proc = new QProcess(this);
     proc->setProgram(QStringLiteral("cmd"));
-    // & pause keeps the window open until the user presses a key so they can
-    // read the full npm output before the window closes.
-    proc->setArguments({QStringLiteral("/c"), a.installCommand + QStringLiteral(" & pause")});
-    // ForwardedChannels → Qt omits CREATE_NO_WINDOW → Windows allocates a
-    // new visible console for the cmd.exe child (the GUI parent has none).
-    proc->setProcessChannelMode(QProcess::ForwardedChannels);
+    proc->setArguments({QStringLiteral("/c"), a.installCommand});
+    // Default channel mode → CREATE_NO_WINDOW → no visible console; output is
+    // captured so we can report success/failure in installFinished.
 
     const QString capturedId = id;
     QPointer<QProcess> guard(proc);
     bool *handled = new bool(false);
 
     connect(proc, &QProcess::finished, this,
-            [this, capturedId, guard, handled](int, QProcess::ExitStatus) {
+            [this, capturedId, guard, handled](int exitCode, QProcess::ExitStatus) {
                 if (*handled)
                     return;
                 *handled = true;
                 m_model->setInstalling(capturedId, false);
+
+                // Read output before deleteLater (reads become no-ops after).
+                const QString output = guard
+                    ? QString::fromLocal8Bit(guard->readAllStandardOutput()) : QString();
+                const QString errOutput = guard
+                    ? QString::fromLocal8Bit(guard->readAllStandardError()) : QString();
+
                 if (guard)
                     guard->deleteLater();
                 delete handled;
+
+                if (exitCode == 0) {
+                    emit installFinished(capturedId, true, QString());
+                } else {
+                    QString detail = errOutput.isEmpty() ? output : errOutput;
+                    if (detail.isEmpty())
+                        detail = tr("(no output)");
+                    emit installFinished(capturedId, false,
+                        tr("Install failed (exit code %1):\n%2")
+                            .arg(exitCode).arg(detail.trimmed()));
+                }
                 // Re-check version to refresh the card.
                 checkVersion(capturedId);
             });
@@ -408,6 +577,11 @@ void AgentLauncher::updateTool(const QString &id)
     if (row < 0)
         return;
     const Agent &a = m_model->agents().at(row);
+
+    if (a.running) {
+        emit launchFailed(id, tr("请先关闭 %1 后再进行安装/更新。").arg(a.name));
+        return;
+    }
     if (a.updateCommand.isEmpty()) {
         emit installFinished(id, false,
             tr("No update command configured for %1.").arg(a.name));
@@ -418,22 +592,40 @@ void AgentLauncher::updateTool(const QString &id)
 
     auto *proc = new QProcess(this);
     proc->setProgram(QStringLiteral("cmd"));
-    proc->setArguments({QStringLiteral("/c"), a.updateCommand + QStringLiteral(" & pause")});
-    proc->setProcessChannelMode(QProcess::ForwardedChannels);
+    proc->setArguments({QStringLiteral("/c"), a.updateCommand});
+    // Default channel mode → CREATE_NO_WINDOW → no visible console; output is
+    // captured so we can report success/failure in installFinished.
 
     const QString capturedId = id;
     QPointer<QProcess> guard(proc);
     bool *handled = new bool(false);
 
     connect(proc, &QProcess::finished, this,
-            [this, capturedId, guard, handled](int, QProcess::ExitStatus) {
+            [this, capturedId, guard, handled](int exitCode, QProcess::ExitStatus) {
                 if (*handled)
                     return;
                 *handled = true;
                 m_model->setInstalling(capturedId, false);
+
+                const QString output = guard
+                    ? QString::fromLocal8Bit(guard->readAllStandardOutput()) : QString();
+                const QString errOutput = guard
+                    ? QString::fromLocal8Bit(guard->readAllStandardError()) : QString();
+
                 if (guard)
                     guard->deleteLater();
                 delete handled;
+
+                if (exitCode == 0) {
+                    emit installFinished(capturedId, true, QString());
+                } else {
+                    QString detail = errOutput.isEmpty() ? output : errOutput;
+                    if (detail.isEmpty())
+                        detail = tr("(no output)");
+                    emit installFinished(capturedId, false,
+                        tr("Update failed (exit code %1):\n%2")
+                            .arg(exitCode).arg(detail.trimmed()));
+                }
                 checkVersion(capturedId);
             });
 

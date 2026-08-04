@@ -23,9 +23,12 @@ public:
         InstallCommandRole,
         UpdateCommandRole,
         VersionCommandRole,
+        SetupCommandRole,
         InstalledRole,
         VersionRole,
-        InstallingRole
+        InstallingRole,
+        SetupDoneRole,
+        SetuppingRole
     };
     Q_ENUM(Roles)
 
@@ -47,6 +50,8 @@ public slots:
     void setInstalled(const QString &id, bool installed);
     void setVersion(const QString &id, const QString &version);
     void setInstalling(const QString &id, bool installing);
+    void setSetupDone(const QString &id, bool done);
+    void setSetupping(const QString &id, bool setupping);
 
 private:
     QList<Agent> m_agents;

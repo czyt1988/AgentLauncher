@@ -33,9 +33,12 @@ QVariant AgentModel::data(const QModelIndex &index, int role) const
     case InstallCommandRole: return a.installCommand;
     case UpdateCommandRole:  return a.updateCommand;
     case VersionCommandRole: return a.versionCommand;
+    case SetupCommandRole:  return a.setupCommand;
     case InstalledRole:  return a.installed;
     case VersionRole:    return a.version;
     case InstallingRole: return a.installing;
+    case SetupDoneRole:  return a.setupDone;
+    case SetuppingRole:  return a.setupping;
     }
     return {};
 }
@@ -55,9 +58,12 @@ QHash<int, QByteArray> AgentModel::roleNames() const
         { InstallCommandRole, "installCommand" },
         { UpdateCommandRole,  "updateCommand" },
         { VersionCommandRole, "versionCommand" },
+        { SetupCommandRole,   "setupCommand" },
         { InstalledRole,  "installed" },
         { VersionRole,     "version" },
-        { InstallingRole,  "installing" }
+        { InstallingRole,  "installing" },
+        { SetupDoneRole,   "setupDone" },
+        { SetuppingRole,   "setupping" }
     };
 }
 
@@ -94,9 +100,12 @@ QVariantMap AgentModel::agent(const QString &id) const
             m[QStringLiteral("installCommand")] = a.installCommand;
             m[QStringLiteral("updateCommand")] = a.updateCommand;
             m[QStringLiteral("versionCommand")] = a.versionCommand;
+            m[QStringLiteral("setupCommand")] = a.setupCommand;
             m[QStringLiteral("installed")] = a.installed;
             m[QStringLiteral("version")] = a.version;
             m[QStringLiteral("installing")] = a.installing;
+            m[QStringLiteral("setupDone")] = a.setupDone;
+            m[QStringLiteral("setupping")] = a.setupping;
             break;
         }
     }
@@ -161,4 +170,28 @@ void AgentModel::setInstalling(const QString &id, bool installing)
     m_agents[row].installing = installing;
     const QModelIndex idx = index(row, 0);
     emit dataChanged(idx, idx, { InstallingRole });
+}
+
+void AgentModel::setSetupDone(const QString &id, bool done)
+{
+    const int row = indexOf(id);
+    if (row < 0)
+        return;
+    if (m_agents[row].setupDone == done)
+        return;
+    m_agents[row].setupDone = done;
+    const QModelIndex idx = index(row, 0);
+    emit dataChanged(idx, idx, { SetupDoneRole });
+}
+
+void AgentModel::setSetupping(const QString &id, bool setupping)
+{
+    const int row = indexOf(id);
+    if (row < 0)
+        return;
+    if (m_agents[row].setupping == setupping)
+        return;
+    m_agents[row].setupping = setupping;
+    const QModelIndex idx = index(row, 0);
+    emit dataChanged(idx, idx, { SetuppingRole });
 }

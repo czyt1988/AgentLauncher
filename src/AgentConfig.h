@@ -24,6 +24,8 @@ struct Agent
     bool installed = false;       // runtime, detected via versionCommand
     QString version;              // runtime, parsed from versionCommand output
     bool installing = false;      // transient UI state, never persisted
+    bool setupDone = false;       // runtime state, persisted in agent_state.json
+    bool setupping = false;       // transient UI state, never persisted
 };
 
 class AgentConfig

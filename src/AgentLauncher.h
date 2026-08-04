@@ -21,9 +21,10 @@ public:
     Q_INVOKABLE bool stop(const QString &id);
     Q_INVOKABLE void openWeb(const QString &id);
     Q_INVOKABLE void openConfigDir(const QString &id);
-    Q_INVOKABLE bool updateAgent(const QString &id, const QString &command, const QString &webUrl);
+    Q_INVOKABLE bool updateAgent(const QString &id, const QString &command, const QString &webUrl, const QString &setupCommand);
     Q_INVOKABLE void install(const QString &id);
     Q_INVOKABLE void updateTool(const QString &id);
+    Q_INVOKABLE void resetSetup(const QString &id);
 
     // True if at least one agent was started from the launcher this session.
     Q_INVOKABLE bool hasLaunchedAgents() const;
@@ -72,6 +73,13 @@ private:
 
     // Extract a x.y.z version string from command output.
     static QString extractVersion(const QString &output);
+
+    // One-time setup: run setupCommand before first launch, persist state.
+    void runSetup(const QString &id);
+    void doLaunch(const QString &id);
+    QString stateFilePath() const;
+    void loadSetupState();
+    void markSetupDone(const QString &id);
 };
 
 #endif // AGENTLAUNCHER_H
