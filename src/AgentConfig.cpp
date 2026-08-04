@@ -27,15 +27,25 @@ void AgentConfig::load()
         }
     }
 
-    if (!file.open(QIODevice::ReadOnly)) {
-        // Fall back to the bundled default directly.
+    // Load the bundled default config for migration fallback.
+    QList<Agent> defaults;
+    {
         QFile def(QStringLiteral(":/config/default_agents.json"));
         if (def.open(QIODevice::ReadOnly))
-            m_agents = parse(def.readAll());
+            defaults = parse(def.readAll());
+    }
+
+    if (!file.open(QIODevice::ReadOnly)) {
+        // Fall back to the bundled default directly.
+        m_agents = defaults;
         return;
     }
 
     m_agents = parse(file.readAll());
+
+    // Merge in any fields missing from an older on-disk config.
+    if (!defaults.isEmpty())
+        migrate(defaults);
 }
 
 bool AgentConfig::save()
@@ -50,6 +60,10 @@ bool AgentConfig::save()
         o[QStringLiteral("configDir")] = a.configDir;
         o[QStringLiteral("icon")] = a.icon;
         o[QStringLiteral("color")] = a.color;
+        o[QStringLiteral("installCommand")] = a.installCommand;
+        o[QStringLiteral("updateCommand")] = a.updateCommand;
+        o[QStringLiteral("versionCommand")] = a.versionCommand;
+        o[QStringLiteral("setupCommand")] = a.setupCommand;
         arr.append(o);
     }
     QJsonObject root;
@@ -97,7 +111,45 @@ QList<Agent> AgentConfig::parse(const QByteArray &data) const
         a.configDir = o.value(QStringLiteral("configDir")).toString();
         a.icon = o.value(QStringLiteral("icon")).toString();
         a.color = o.value(QStringLiteral("color")).toString();
+        a.installCommand = o.value(QStringLiteral("installCommand")).toString();
+        a.updateCommand = o.value(QStringLiteral("updateCommand")).toString();
+        a.versionCommand = o.value(QStringLiteral("versionCommand")).toString();
+        a.setupCommand = o.value(QStringLiteral("setupCommand")).toString();
         result.append(a);
     }
     return result;
+}
+
+void AgentConfig::migrate(const QList<Agent> &defaults)
+{
+    bool changed = false;
+    for (const Agent &def : defaults) {
+        auto it = std::find_if(m_agents.begin(), m_agents.end(),
+            [&](const Agent &a) { return a.id == def.id; });
+        if (it == m_agents.end()) {
+            // Agent in default but not on disk — add it.
+            m_agents.append(def);
+            changed = true;
+        } else {
+            // Fill in any empty fields from the default.
+            auto fill = [&](QString &field, const QString &defVal) {
+                if (field.isEmpty() && !defVal.isEmpty()) {
+                    field = defVal;
+                    changed = true;
+                }
+            };
+            fill(it->name, def.name);
+            fill(it->command, def.command);
+            fill(it->webUrl, def.webUrl);
+            fill(it->configDir, def.configDir);
+            fill(it->icon, def.icon);
+            fill(it->color, def.color);
+            fill(it->installCommand, def.installCommand);
+            fill(it->updateCommand, def.updateCommand);
+            fill(it->versionCommand, def.versionCommand);
+            fill(it->setupCommand, def.setupCommand);
+        }
+    }
+    if (changed)
+        save();
 }

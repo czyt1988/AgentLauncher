@@ -13,6 +13,10 @@ Item {
     property string agentColor: color
     property bool running_p: running
     property bool launching_p: launching
+    property bool installed_p: installed
+    property string version_p: version
+    property bool installing_p: installing
+    property string installCommand_p: installCommand
 
     signal configureRequested(string id)
 
@@ -38,6 +42,12 @@ Item {
         }
     }
 
+    // Transient UI state for the stop button: set immediately on click so
+    // the card shows "Stopping…" + a spinner before the health check (500ms
+    // later) confirms the agent is down. Cleared when running_p goes false.
+    property bool stopping: false
+    onRunning_pChanged: if (!running_p) stopping = false
+
     Rectangle {
         id: card
         anchors.fill: parent
@@ -56,11 +66,154 @@ Item {
         // Click the card body: open web UI when running, otherwise launch.
         MouseArea {
             anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
             onClicked: {
                 if (root.running_p)
                     launcher.openWeb(root.agentId_p)
                 else if (!root.launching_p)
                     launcher.launch(root.agentId_p)
+            }
+        }
+
+        // Right-click context menu.
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.RightButton
+            onClicked: contextMenu.popup()
+        }
+
+        Menu {
+            id: contextMenu
+
+            MenuItem {
+                text: root.running_p ? qsTr("关闭") : qsTr("开启")
+                onTriggered: {
+                    if (root.running_p)
+                        launcher.stop(root.agentId_p)
+                    else
+                        launcher.launch(root.agentId_p)
+                }
+            }
+            MenuItem {
+                text: root.installed_p ? qsTr("更新") : qsTr("安装")
+                enabled: !root.installing_p && root.installCommand_p.length > 0
+                onTriggered: {
+                    if (root.installed_p)
+                        launcher.updateTool(root.agentId_p)
+                    else
+                        launcher.install(root.agentId_p)
+                }
+            }
+            MenuItem {
+                text: qsTr("设置")
+                onTriggered: root.configureRequested(root.agentId_p)
+            }
+            MenuItem {
+                text: qsTr("打开配置文件夹")
+                onTriggered: launcher.openConfigDir(root.agentId_p)
+            }
+        }
+
+        // Top-left indicator: version label (installed), download icon (not
+        // installed), or spinner (installing). Mirrors the top-right × stop
+        // button's positioning.
+        Item {
+            id: versionIndicator
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.topMargin: 8
+            anchors.leftMargin: 8
+            width: 60
+            height: 22
+
+            // Installing state: spinner
+            BusyIndicator {
+                visible: root.installing_p
+                running: root.installing_p
+                width: 16
+                height: 16
+                anchors.centerIn: parent
+            }
+
+            // Not installed: download icon (clickable → install)
+            Item {
+                visible: !root.installed_p && !root.installing_p
+                anchors.fill: parent
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 11
+                    color: downloadArea.containsMouse
+                           ? Qt.rgba(137/255, 180/255, 250/255, 0.22)
+                           : "transparent"
+                }
+                Text {
+                    anchors.centerIn: parent
+                    text: "\u2193"
+                    color: downloadArea.containsMouse ? "#89b4fa" : "#7f849c"
+                    font.pixelSize: 14
+                    font.bold: true
+                }
+                MouseArea {
+                    id: downloadArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    ToolTip.text: qsTr("安装")
+                    ToolTip.visible: containsMouse
+                    ToolTip.delay: 300
+                    onClicked: launcher.install(root.agentId_p)
+                }
+            }
+
+            // Installed: version label + update button
+            Item {
+                visible: root.installed_p && !root.installing_p
+                anchors.fill: parent
+
+                Label {
+                    id: versionLabel
+                    text: root.version_p.length > 0 ? root.version_p : qsTr("Installed")
+                    color: "#7f849c"
+                    font.pixelSize: 10
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    elide: Text.ElideRight
+                    width: 40
+                    horizontalAlignment: Text.AlignHCenter
+                }
+
+                // Update icon button (↻)
+                Item {
+                    id: updateButton
+                    anchors.left: versionLabel.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 16
+                    height: 16
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 8
+                        color: updateArea2.containsMouse
+                               ? Qt.rgba(137/255, 180/255, 250/255, 0.22)
+                               : "transparent"
+                    }
+                    Text {
+                        anchors.centerIn: parent
+                        text: "\u21BB"
+                        color: updateArea2.containsMouse ? "#89b4fa" : "#7f849c"
+                        font.pixelSize: 14
+                        font.bold: true
+                    }
+                    MouseArea {
+                        id: updateArea2
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        ToolTip.text: qsTr("更新")
+                        ToolTip.visible: containsMouse
+                        ToolTip.delay: 300
+                        onClicked: launcher.updateTool(root.agentId_p)
+                    }
+                }
             }
         }
 
@@ -103,10 +256,12 @@ Item {
 
             Label {
                 text: root.flashing ? root.flashMessage
-                                    : (root.launching_p ? qsTr("Starting…")
-                                                        : (root.running_p ? qsTr("Running") : qsTr("Stopped")))
+                                    : (root.installing_p ? qsTr("Installing…")
+                                                          : (root.launching_p ? qsTr("Starting…")
+                                                                              : (root.stopping ? qsTr("Stopping…")
+                                                                                                : (root.running_p ? qsTr("Running") : qsTr("Stopped")))))
                 color: root.flashing ? "#f38ba8"
-                                     : ((root.launching_p || root.running_p) ? root.agentColor : "#7f849c")
+                                     : ((root.installing_p || root.launching_p || root.stopping || root.running_p) ? root.agentColor : "#7f849c")
                 font.pixelSize: 12
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
@@ -179,6 +334,7 @@ Item {
         // Subtle "stop" affordance: a faint × in the top-right corner, only
         // while the agent is running. Brightens on hover. Terminates the
         // process tree this launcher started (see AgentLauncher::stop).
+        // While stopping, shows a spinner instead of × and is disabled.
         Item {
             id: stopButton
             anchors.top: parent.top
@@ -200,12 +356,27 @@ Item {
                 color: stopArea.containsMouse ? "#f38ba8" : "#7f849c"
                 font.pixelSize: 15
                 font.bold: true
+                visible: !root.stopping
+            }
+            BusyIndicator {
+                anchors.centerIn: parent
+                visible: root.stopping
+                running: root.stopping
+                width: 16
+                height: 16
             }
             MouseArea {
                 id: stopArea
                 anchors.fill: parent
                 hoverEnabled: true
-                onClicked: launcher.stop(root.agentId_p)
+                enabled: !root.stopping
+                ToolTip.text: qsTr("关闭")
+                ToolTip.visible: containsMouse && !root.stopping
+                ToolTip.delay: 300
+                onClicked: {
+                    root.stopping = true
+                    launcher.stop(root.agentId_p)
+                }
             }
         }
     }

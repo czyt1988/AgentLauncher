@@ -30,6 +30,12 @@ QVariant AgentModel::data(const QModelIndex &index, int role) const
     case ColorRole:     return a.color;
     case RunningRole:   return a.running;
     case LaunchingRole: return a.launching;
+    case InstallCommandRole: return a.installCommand;
+    case UpdateCommandRole:  return a.updateCommand;
+    case VersionCommandRole: return a.versionCommand;
+    case InstalledRole:  return a.installed;
+    case VersionRole:    return a.version;
+    case InstallingRole: return a.installing;
     }
     return {};
 }
@@ -45,7 +51,13 @@ QHash<int, QByteArray> AgentModel::roleNames() const
         { IconRole,      "icon" },
         { ColorRole,     "color" },
         { RunningRole,   "running" },
-        { LaunchingRole, "launching" }
+        { LaunchingRole, "launching" },
+        { InstallCommandRole, "installCommand" },
+        { UpdateCommandRole,  "updateCommand" },
+        { VersionCommandRole, "versionCommand" },
+        { InstalledRole,  "installed" },
+        { VersionRole,     "version" },
+        { InstallingRole,  "installing" }
     };
 }
 
@@ -79,6 +91,12 @@ QVariantMap AgentModel::agent(const QString &id) const
             m[QStringLiteral("color")] = a.color;
             m[QStringLiteral("running")] = a.running;
             m[QStringLiteral("launching")] = a.launching;
+            m[QStringLiteral("installCommand")] = a.installCommand;
+            m[QStringLiteral("updateCommand")] = a.updateCommand;
+            m[QStringLiteral("versionCommand")] = a.versionCommand;
+            m[QStringLiteral("installed")] = a.installed;
+            m[QStringLiteral("version")] = a.version;
+            m[QStringLiteral("installing")] = a.installing;
             break;
         }
     }
@@ -107,4 +125,40 @@ void AgentModel::setLaunching(const QString &id, bool launching)
     m_agents[row].launching = launching;
     const QModelIndex idx = index(row, 0);
     emit dataChanged(idx, idx, { LaunchingRole });
+}
+
+void AgentModel::setInstalled(const QString &id, bool installed)
+{
+    const int row = indexOf(id);
+    if (row < 0)
+        return;
+    if (m_agents[row].installed == installed)
+        return;
+    m_agents[row].installed = installed;
+    const QModelIndex idx = index(row, 0);
+    emit dataChanged(idx, idx, { InstalledRole });
+}
+
+void AgentModel::setVersion(const QString &id, const QString &version)
+{
+    const int row = indexOf(id);
+    if (row < 0)
+        return;
+    if (m_agents[row].version == version)
+        return;
+    m_agents[row].version = version;
+    const QModelIndex idx = index(row, 0);
+    emit dataChanged(idx, idx, { VersionRole });
+}
+
+void AgentModel::setInstalling(const QString &id, bool installing)
+{
+    const int row = indexOf(id);
+    if (row < 0)
+        return;
+    if (m_agents[row].installing == installing)
+        return;
+    m_agents[row].installing = installing;
+    const QModelIndex idx = index(row, 0);
+    emit dataChanged(idx, idx, { InstallingRole });
 }

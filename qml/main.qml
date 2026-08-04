@@ -13,6 +13,19 @@ ApplicationWindow {
 
     color: "#1e1e2e"
 
+    // Set to true when the user has already confirmed the exit dialog, so
+    // onClosing lets the window close without re-prompting.
+    property bool exitConfirmed: false
+
+    onClosing: function(close) {
+        if (exitConfirmed)
+            return
+        if (launcher.hasLaunchedAgents()) {
+            close.accepted = false
+            exitConfirmPopup.open()
+        }
+    }
+
     StackView {
         id: stack
         anchors.fill: parent
@@ -76,6 +89,72 @@ ApplicationWindow {
         ConfigPage {}
     }
 
+    // Exit confirmation: shown when the user closes the window while one or
+    // more agents were started from the launcher this session.
+    Popup {
+        id: exitConfirmPopup
+        anchors.centerIn: parent
+        modal: true
+        focus: true
+        width: 440
+        padding: 20
+        closePolicy: Popup.NoAutoClose
+
+        background: Rectangle {
+            color: "#1e1e2e"
+            border.color: "#89b4fa"
+            border.width: 1
+            radius: 12
+        }
+
+        ColumnLayout {
+            width: exitConfirmPopup.availableWidth
+            spacing: 14
+
+            Label {
+                text: qsTr("确认退出")
+                color: "#89b4fa"
+                font.pixelSize: 16
+                font.bold: true
+            }
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("本次会话通过 AgentLauncher 启动了后台终端，是否在退出前关闭它们？")
+                color: "#cdd6f4"
+                font.pixelSize: 13
+                wrapMode: Text.Wrap
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+
+                Button {
+                    Layout.fillWidth: true
+                    text: qsTr("是，关闭后台终端")
+                    background: Rectangle { radius: 8; color: parent.down ? Qt.darker("#89b4fa", 1.3) : (parent.hovered ? Qt.darker("#89b4fa", 1.15) : "#89b4fa") }
+                    contentItem: Label { text: parent.text; color: "#1e1e2e"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: {
+                        launcher.stopAll()
+                        exitConfirmPopup.close()
+                        window.exitConfirmed = true
+                        window.close()
+                    }
+                }
+                Button {
+                    Layout.fillWidth: true
+                    text: qsTr("否，直接退出")
+                    background: Rectangle { radius: 8; color: parent.down ? "#45475a" : (parent.hovered ? "#4a4d62" : "#313244") }
+                    contentItem: Label { text: parent.text; color: "#cdd6f4"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: {
+                        exitConfirmPopup.close()
+                        window.exitConfirmed = true
+                        window.close()
+                    }
+                }
+            }
+        }
+    }
+
     // Central error display for launch/stop failures. The matching card also
     // flashes red (see AgentCard.qml) for at-place feedback.
     Popup {
@@ -127,6 +206,12 @@ ApplicationWindow {
         function onLaunchFailed(id, message) {
             errorPopup.message = message
             errorPopup.open()
+        }
+        function onInstallFinished(id, success, message) {
+            if (!success) {
+                errorPopup.message = message
+                errorPopup.open()
+            }
         }
     }
 }

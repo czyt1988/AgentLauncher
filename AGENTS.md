@@ -34,9 +34,17 @@ docs/        MkDocs site (English + zh/)
 ## Config schema (agents.json)
 
 Each agent object has: `id`, `name`, `command`, `webUrl`, `configDir`, `icon`,
-`color`. See `config/default_agents.json`. New agents are added by editing
-this file (and the on-disk copy at `AppConfigLocation/agents.json`). Do **not**
-hard-code agent entries in C++.
+`color`, `installCommand`, `updateCommand`, `versionCommand`. See
+`config/default_agents.json`. New agents are added by editing this file (and
+the on-disk copy at `AppConfigLocation/agents.json`). Do **not** hard-code
+agent entries in C++.
+
+On load, `AgentConfig::load()` merges the bundled default into the on-disk
+config: any field that is empty on disk is filled from the default, and any
+agent present in the default but missing on disk is appended. This migration
+ensures older configs (created before `installCommand`/`updateCommand`/
+`versionCommand` existed) get the new fields automatically. The updated config
+is persisted back to disk if anything changed.
 
 ## Conventions
 

@@ -7,7 +7,10 @@
             "webUrl": "http://127.0.0.1:58627",
             "configDir": "%USERPROFILE%/.kimi-code",
             "icon": "qrc:/icons/kimi-code.svg",
-            "color": "#FF6B35"
+            "color": "#FF6B35",
+            "installCommand": "npm install -g @kimi-code/cli",
+            "updateCommand": "npm update -g @kimi-code/cli",
+            "versionCommand": "kimi --version"
         },
         {
             "id": "opencode",
@@ -16,7 +19,10 @@
             "webUrl": "http://127.0.0.1:4096",
             "configDir": "%USERPROFILE%/.config/opencode",
             "icon": "qrc:/icons/opencode.svg",
-            "color": "#3B82F6"
+            "color": "#3B82F6",
+            "installCommand": "npm install -g opencode-ai",
+            "updateCommand": "npm update -g opencode-ai",
+            "versionCommand": "opencode --version"
         },
         {
             "id": "qwen-code",
@@ -25,7 +31,10 @@
             "webUrl": "http://127.0.0.1:4170",
             "configDir": "%USERPROFILE%/.qwen",
             "icon": "qrc:/icons/qwen-code.svg",
-            "color": "#8B5CF6"
+            "color": "#8B5CF6",
+            "installCommand": "npm install -g @qwen-code/qwen-code",
+            "updateCommand": "npm update -g @qwen-code/qwen-code",
+            "versionCommand": "qwen --version"
         },
         {
             "id": "openclaw",
@@ -34,7 +43,10 @@
             "webUrl": "http://127.0.0.1:18789",
             "configDir": "%USERPROFILE%/.openclaw",
             "icon": "qrc:/icons/openclaw.svg",
-            "color": "#DC2626"
+            "color": "#DC2626",
+            "installCommand": "npm install -g openclaw",
+            "updateCommand": "npm update -g openclaw",
+            "versionCommand": "openclaw --version"
         }
     ]
 }

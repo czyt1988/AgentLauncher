@@ -19,7 +19,13 @@ public:
         IconRole,
         ColorRole,
         RunningRole,
-        LaunchingRole
+        LaunchingRole,
+        InstallCommandRole,
+        UpdateCommandRole,
+        VersionCommandRole,
+        InstalledRole,
+        VersionRole,
+        InstallingRole
     };
     Q_ENUM(Roles)
 
@@ -38,6 +44,9 @@ public:
 public slots:
     void setRunning(const QString &id, bool running);
     void setLaunching(const QString &id, bool launching);
+    void setInstalled(const QString &id, bool installed);
+    void setVersion(const QString &id, const QString &version);
+    void setInstalling(const QString &id, bool installing);
 
 private:
     QList<Agent> m_agents;
