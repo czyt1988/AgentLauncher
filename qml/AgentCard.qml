@@ -17,6 +17,9 @@ Item {
     property string version_p: version
     property bool installing_p: installing
     property string installCommand_p: installCommand
+    property string setupCommand_p: setupCommand
+    property bool setupping_p: setupping
+    property bool setupDone_p: setupDone
 
     signal configureRequested(string id)
 
@@ -70,7 +73,7 @@ Item {
             onClicked: {
                 if (root.running_p)
                     launcher.openWeb(root.agentId_p)
-                else if (!root.launching_p)
+                else if (!root.launching_p && !root.setupping_p)
                     launcher.launch(root.agentId_p)
             }
         }
@@ -96,7 +99,7 @@ Item {
             }
             MenuItem {
                 text: root.installed_p ? qsTr("更新") : qsTr("安装")
-                enabled: !root.installing_p && root.installCommand_p.length > 0
+                enabled: !root.installing_p && !root.running_p && root.installCommand_p.length > 0
                 onTriggered: {
                     if (root.installed_p)
                         launcher.updateTool(root.agentId_p)
@@ -111,6 +114,11 @@ Item {
             MenuItem {
                 text: qsTr("打开配置文件夹")
                 onTriggered: launcher.openConfigDir(root.agentId_p)
+            }
+            MenuItem {
+                text: qsTr("重新初始化")
+                visible: root.setupCommand_p.length > 0
+                onTriggered: launcher.resetSetup(root.agentId_p)
             }
         }
 
@@ -161,7 +169,15 @@ Item {
                     ToolTip.text: qsTr("安装")
                     ToolTip.visible: containsMouse
                     ToolTip.delay: 300
-                    onClicked: launcher.install(root.agentId_p)
+                    onClicked: {
+                        if (root.running_p) {
+                            root.flashMessage = qsTr("请先关闭后再安装")
+                            root.flashing = true
+                            flashTimer.restart()
+                            return
+                        }
+                        launcher.install(root.agentId_p)
+                    }
                 }
             }
 
@@ -211,7 +227,15 @@ Item {
                         ToolTip.text: qsTr("更新")
                         ToolTip.visible: containsMouse
                         ToolTip.delay: 300
-                        onClicked: launcher.updateTool(root.agentId_p)
+                        onClicked: {
+                        if (root.running_p) {
+                            root.flashMessage = qsTr("请先关闭后再更新")
+                            root.flashing = true
+                            flashTimer.restart()
+                            return
+                        }
+                        launcher.updateTool(root.agentId_p)
+                    }
                     }
                 }
             }
@@ -256,78 +280,84 @@ Item {
 
             Label {
                 text: root.flashing ? root.flashMessage
-                                    : (root.installing_p ? qsTr("Installing…")
+                                    : (root.setupping_p ? qsTr("Setting up…")
+                                                          : (root.installing_p ? qsTr("Installing…")
                                                           : (root.launching_p ? qsTr("Starting…")
                                                                               : (root.stopping ? qsTr("Stopping…")
-                                                                                                : (root.running_p ? qsTr("Running") : qsTr("Stopped")))))
+                                                                                                : (root.running_p ? qsTr("Running") : qsTr("Stopped"))))))
                 color: root.flashing ? "#f38ba8"
-                                     : ((root.installing_p || root.launching_p || root.stopping || root.running_p) ? root.agentColor : "#7f849c")
+                                     : ((root.setupping_p || root.installing_p || root.launching_p || root.stopping || root.running_p) ? root.agentColor : "#7f849c")
                 font.pixelSize: 12
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
             }
 
-            Item { width: 1; height: 4 }
+        }
 
-            Row {
-                spacing: 10
-                width: parent.width
+        // Button row anchored to the bottom of the card so there's no
+        // large empty gap below the buttons.
+        Row {
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.margins: 18
+            spacing: 10
 
-                Button {
-                    id: actionButton
-                    width: (parent.width - 10) / 2
-                    // While the agent is booting up, disable the button (no
-                    // double-launch) and show a spinner in place of the label
-                    // until the health check confirms it is running.
-                    enabled: !root.launching_p
-                    text: root.launching_p ? "" : (root.running_p ? qsTr("Open") : qsTr("Start"))
+            Button {
+                id: actionButton
+                width: (parent.width - 10) / 2
+                // While the agent is booting up or setting up, disable
+                // the button (no double-launch) and show a spinner in
+                // place of the label until the health check confirms it
+                // is running.
+                enabled: !root.launching_p && !root.setupping_p
+                text: root.launching_p ? "" : (root.running_p ? qsTr("Open") : qsTr("Start"))
 
-                    background: Rectangle {
-                        radius: 8
-                        color: parent.down ? Qt.darker(root.agentColor, 1.3)
-                                           : (parent.hovered ? Qt.darker(root.agentColor, 1.15) : root.agentColor)
-                        opacity: root.launching_p ? 0.6 : 1.0
-                    }
-                    contentItem: Label {
-                        text: parent.text
-                        color: "#ffffff"
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    BusyIndicator {
-                        anchors.centerIn: parent
-                        visible: root.launching_p
-                        running: root.launching_p
-                        width: 24
-                        height: 24
-                    }
-                    onClicked: {
-                        if (root.running_p)
-                            launcher.openWeb(root.agentId_p)
-                        else
-                            launcher.launch(root.agentId_p)
-                    }
+                background: Rectangle {
+                    radius: 8
+                    color: parent.down ? Qt.darker(root.agentColor, 1.3)
+                                       : (parent.hovered ? Qt.darker(root.agentColor, 1.15) : root.agentColor)
+                    opacity: (root.launching_p || root.setupping_p) ? 0.6 : 1.0
                 }
-
-                Button {
-                    text: qsTr("Configure")
-                    width: (parent.width - 10) / 2
-
-                    background: Rectangle {
-                        radius: 8
-                        color: parent.down ? "#45475a"
-                                           : (parent.hovered ? "#4a4d62" : "#45475a")
-                    }
-                    contentItem: Label {
-                        text: parent.text
-                        color: "#cdd6f4"
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    onClicked: root.configureRequested(root.agentId_p)
+                contentItem: Label {
+                    text: parent.text
+                    color: "#ffffff"
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
                 }
+                BusyIndicator {
+                    anchors.centerIn: parent
+                    visible: root.launching_p || root.setupping_p
+                    running: root.launching_p || root.setupping_p
+                    width: 24
+                    height: 24
+                }
+                onClicked: {
+                    if (root.running_p)
+                        launcher.openWeb(root.agentId_p)
+                    else
+                        launcher.launch(root.agentId_p)
+                }
+            }
+
+            Button {
+                text: qsTr("Configure")
+                width: (parent.width - 10) / 2
+
+                background: Rectangle {
+                    radius: 8
+                    color: parent.down ? "#45475a"
+                                       : (parent.hovered ? "#4a4d62" : "#45475a")
+                }
+                contentItem: Label {
+                    text: parent.text
+                    color: "#cdd6f4"
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                onClicked: root.configureRequested(root.agentId_p)
             }
         }
 
