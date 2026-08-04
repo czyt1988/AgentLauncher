@@ -6,6 +6,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
+#include <QTranslator>
 
 int main(int argc, char *argv[])
 {
@@ -13,6 +14,12 @@ int main(int argc, char *argv[])
 
     QGuiApplication app(argc, argv);
     QQuickStyle::setStyle(QStringLiteral("Basic"));
+
+    // Load locale-appropriate translation from embedded :/i18n/ resources.
+    QTranslator translator;
+    if (translator.load(QLocale(), QStringLiteral("agentlauncher"),
+                        QStringLiteral("_"), QStringLiteral(":/i18n")))
+        app.installTranslator(&translator);
 
     AgentConfig config;
     config.load(); // loads or seeds default agents.json

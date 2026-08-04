@@ -11,6 +11,7 @@ Item {
     property string name_p: name
     property string icon_p: icon
     property string agentColor: color
+    property string cardColor_p: cardColor
     property bool running_p: running
     property bool launching_p: launching
     property bool installed_p: installed
@@ -59,7 +60,7 @@ Item {
         // Visual state: running => tinted background with colored border.
         color: root.running_p
               ? Qt.rgba(tintRed(root.agentColor), tintGreen(root.agentColor), tintBlue(root.agentColor), 0.16)
-              : "#313244"
+              : (root.cardColor_p.length > 0 ? root.cardColor_p : "#313244")
         border.width: root.running_p ? 2.5 : 1
         border.color: root.flashing ? "#f38ba8"
                                     : (root.running_p ? root.agentColor : "#45475a")
@@ -89,7 +90,7 @@ Item {
             id: contextMenu
 
             MenuItem {
-                text: root.running_p ? qsTr("关闭") : qsTr("开启")
+                text: root.running_p ? qsTr("Close") : qsTr("Start")
                 onTriggered: {
                     if (root.running_p)
                         launcher.stop(root.agentId_p)
@@ -98,7 +99,7 @@ Item {
                 }
             }
             MenuItem {
-                text: root.installed_p ? qsTr("更新") : qsTr("安装")
+                text: root.installed_p ? qsTr("Update") : qsTr("Install")
                 enabled: !root.installing_p && !root.running_p && root.installCommand_p.length > 0
                 onTriggered: {
                     if (root.installed_p)
@@ -108,15 +109,15 @@ Item {
                 }
             }
             MenuItem {
-                text: qsTr("设置")
+                text: qsTr("Configure")
                 onTriggered: root.configureRequested(root.agentId_p)
             }
             MenuItem {
-                text: qsTr("打开配置文件夹")
+                text: qsTr("Open config folder")
                 onTriggered: launcher.openConfigDir(root.agentId_p)
             }
             MenuItem {
-                text: qsTr("重新初始化")
+                text: qsTr("Re-initialize")
                 visible: root.setupCommand_p.length > 0
                 onTriggered: launcher.resetSetup(root.agentId_p)
             }
@@ -166,12 +167,12 @@ Item {
                     id: downloadArea
                     anchors.fill: parent
                     hoverEnabled: true
-                    ToolTip.text: qsTr("安装")
+                    ToolTip.text: qsTr("Install")
                     ToolTip.visible: containsMouse
                     ToolTip.delay: 300
                     onClicked: {
                         if (root.running_p) {
-                            root.flashMessage = qsTr("请先关闭后再安装")
+                            root.flashMessage = qsTr("Please close before installing")
                             root.flashing = true
                             flashTimer.restart()
                             return
@@ -224,12 +225,12 @@ Item {
                         id: updateArea2
                         anchors.fill: parent
                         hoverEnabled: true
-                        ToolTip.text: qsTr("更新")
+                        ToolTip.text: qsTr("Update")
                         ToolTip.visible: containsMouse
                         ToolTip.delay: 300
                         onClicked: {
                         if (root.running_p) {
-                            root.flashMessage = qsTr("请先关闭后再更新")
+                            root.flashMessage = qsTr("Please close before updating")
                             root.flashing = true
                             flashTimer.restart()
                             return
@@ -400,7 +401,7 @@ Item {
                 anchors.fill: parent
                 hoverEnabled: true
                 enabled: !root.stopping
-                ToolTip.text: qsTr("关闭")
+                ToolTip.text: qsTr("Close")
                 ToolTip.visible: containsMouse && !root.stopping
                 ToolTip.delay: 300
                 onClicked: {

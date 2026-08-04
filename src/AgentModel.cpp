@@ -28,6 +28,7 @@ QVariant AgentModel::data(const QModelIndex &index, int role) const
     case ConfigDirRole: return a.configDir;
     case IconRole:      return a.icon;
     case ColorRole:     return a.color;
+    case CardColorRole: return a.cardColor;
     case RunningRole:   return a.running;
     case LaunchingRole: return a.launching;
     case InstallCommandRole: return a.installCommand;
@@ -53,6 +54,7 @@ QHash<int, QByteArray> AgentModel::roleNames() const
         { ConfigDirRole, "configDir" },
         { IconRole,      "icon" },
         { ColorRole,     "color" },
+        { CardColorRole, "cardColor" },
         { RunningRole,   "running" },
         { LaunchingRole, "launching" },
         { InstallCommandRole, "installCommand" },
@@ -95,6 +97,7 @@ QVariantMap AgentModel::agent(const QString &id) const
             m[QStringLiteral("configDir")] = a.configDir;
             m[QStringLiteral("icon")] = a.icon;
             m[QStringLiteral("color")] = a.color;
+            m[QStringLiteral("cardColor")] = a.cardColor;
             m[QStringLiteral("running")] = a.running;
             m[QStringLiteral("launching")] = a.launching;
             m[QStringLiteral("installCommand")] = a.installCommand;

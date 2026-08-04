@@ -16,7 +16,7 @@ cmake -B build -DCMAKE_PREFIX_PATH="C:/Qt/6.7.3/msvc2019_64"
 cmake --build build
 ```
 
-- Qt 6.5+ required (modules: Core, Gui, Qml, Quick, Network).
+- Qt 6.5+ required (modules: Core, Gui, Qml, Quick, Network, LinguistTools).
 - CMake 3.16+, C++17.
 - Generator: Ninja (preferred) or MSBuild. On Windows with MSVC, run from a
   developer command prompt or call `vcvars64.bat` first.
@@ -24,26 +24,41 @@ cmake --build build
 ## Layout
 
 ```
-src/         C++ backend: AgentConfig, AgentModel, AgentLauncher, main.cpp
-qml/         QML UI: main.qml, AgentCard.qml, ConfigPage.qml
-config/      default_agents.json (bundled as a Qt resource)
-icons/       SVG icons (bundled as Qt resources)
-docs/        MkDocs site (English + zh/)
+src/           C++ backend: AgentConfig, AgentModel, AgentLauncher, main.cpp
+qml/           QML UI: main.qml, AgentCard.qml, ConfigPage.qml
+config/        default_agents.json (bundled as a Qt resource)
+icons/         SVG icons (bundled as Qt resources)
+translations/  .ts translation sources (compiled to .qm at build time, embedded as :/i18n/)
+docs/          MkDocs site (English + zh/)
 ```
 
 ## Config schema (agents.json)
 
 Each agent object has: `id`, `name`, `command`, `webUrl`, `configDir`, `icon`,
-`color`, `installCommand`, `updateCommand`, `versionCommand`, `setupCommand`.
-See `config/default_agents.json`. New agents are added by editing this file (and
-the on-disk copy at `AppConfigLocation/agents.json`). Do **not** hard-code
-agent entries in C++.
+`color`, `cardColor`, `installCommand`, `updateCommand`, `versionCommand`,
+`setupCommand`. See `config/default_agents.json`. New agents are added by
+editing this file (and the on-disk copy at `AppConfigLocation/agents.json`).
+Do **not** hard-code agent entries in C++.
+
+The `icon` field accepts: `qrc:/icons/<name>.svg` (built-in), a local file path
+(env vars `%VAR%` and `~` expanded), an `http(s)://` URL, or empty (falls back
+to `qrc:/icons/default.svg`). Built-in neutral icons: `default`, `terminal`,
+`cube`, `bot`. `AgentConfig::resolveIcon()` handles the resolution at parse
+time; `AgentConfig::expandEnv()` does the env-var expansion (also used by
+`configDir`).
+
+The `cardColor` field is optional — it sets the card's non-running background
+color. Empty = default `#313244`.
+
+The `color` field is optional — if empty, a color is auto-assigned from a
+built-in Catppuccin Mocha palette by cycling through it based on the agent's
+position in the list. The assigned color is persisted on first run.
 
 The `setupCommand` field is optional — it holds a one-time command that runs
 before the first launch of an agent (e.g. generating a bearer token for
 `qwen serve`). If the command exits with code 0, the result is persisted to
 `AppConfigLocation/agent_state.json` and the command is never re-run unless
-the user picks "重新初始化" from the card's context menu. An empty
+the user picks "Re-initialize" from the card's context menu. An empty
 `setupCommand` means no prerequisite — the agent launches directly.
 
 On load, `AgentConfig::load()` merges the bundled default into the on-disk
@@ -69,9 +84,33 @@ is persisted back to disk if anything changed.
   expands them. `~` is also expanded to the home dir.
 - When changing QML, keep the dark theme colors (Catppuccin Mocha palette).
 
+## Internationalization (i18n)
+
+This is an international open-source project. All user-visible strings must be
+translatable.
+
+- **Source language is English.** Never write Chinese (or any other non-English
+  language) inside `tr()` or `qsTr()` — the source string must be English.
+  Chinese and other translations belong in `.ts` files under `translations/`.
+- **C++**: wrap every user-visible string in `tr()`.
+- **QML**: wrap every user-visible string in `qsTr()`.
+- Translation files live in `translations/`. The build runs `lupdate` (syncs
+  `.ts` from source) and `lrelease` (compiles `.qm`) via
+  `qt6_create_translation` in CMakeLists.txt. Compiled `.qm` files are
+  embedded as Qt resources under `:/i18n/`.
+- `main.cpp` installs a `QTranslator` that auto-loads based on system locale.
+- To add a new language: create `translations/agentlauncher_<locale>.ts`,
+  add it to the `TS_FILES` list in CMakeLists.txt, then build (lupdate will
+  populate it). Fill in translations and rebuild.
+- Comments, identifiers, and log messages should also be in English.
+- Localized documentation (`docs/zh/`, `README-zh.md`) and language-name
+  labels in `mkdocs.yml` are **not** source code — they are legitimate
+  localized content and are exempt from this rule.
+
 ## Don't
 
 - Don't hard-code agent definitions in C++.
+- Don't write non-English source strings inside `tr()`/`qsTr()`.
 - Don't run `git commit`/`git push` unless explicitly asked.
 
 ## Stopping agents

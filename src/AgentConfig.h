@@ -15,6 +15,7 @@ struct Agent
     QString configDir;
     QString icon;
     QString color;
+    QString cardColor; // optional card background color (non-running state)
     QString installCommand;
     QString updateCommand;
     QString versionCommand;
@@ -46,11 +47,28 @@ private:
 
     QList<Agent> parse(const QByteArray &data) const;
 
+    // Resolve an icon string to a usable image URL:
+    //   empty            → qrc:/icons/default.svg
+    //   qrc:/...         → as-is
+    //   http(s)://...    → as-is
+    //   local file path  → expand env vars, check existence, convert to
+    //                      file:/// URL; fall back to default if not found
+    static QString resolveIcon(const QString &raw);
+
+    // Expand %VAR% environment variables and ~ in a path.
+    static QString expandEnv(const QString &path);
+
     // Fill in empty fields from the bundled default config and add missing
     // agents. Called after load() so on-disk configs created from older
     // defaults (missing installCommand/updateCommand/versionCommand) get
     // the new fields populated automatically.
     void migrate(const QList<Agent> &defaults);
+
+    // Assign a color from the built-in palette to every agent whose `color`
+    // is still empty after migration. Colors are assigned by cycling through
+    // the palette based on the agent's position in the list. Returns true if
+    // any color was assigned (so the caller can persist).
+    bool assignPaletteColors();
 };
 
 #endif // AGENTCONFIG_H

@@ -2,11 +2,14 @@
 
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QIODevice>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QRegularExpression>
 #include <QStandardPaths>
+#include <QUrl>
 
 void AgentConfig::load()
 {
@@ -46,6 +49,10 @@ void AgentConfig::load()
     // Merge in any fields missing from an older on-disk config.
     if (!defaults.isEmpty())
         migrate(defaults);
+
+    // Assign palette colors to agents that still have no color.
+    if (assignPaletteColors())
+        save();
 }
 
 bool AgentConfig::save()
@@ -60,6 +67,7 @@ bool AgentConfig::save()
         o[QStringLiteral("configDir")] = a.configDir;
         o[QStringLiteral("icon")] = a.icon;
         o[QStringLiteral("color")] = a.color;
+        o[QStringLiteral("cardColor")] = a.cardColor;
         o[QStringLiteral("installCommand")] = a.installCommand;
         o[QStringLiteral("updateCommand")] = a.updateCommand;
         o[QStringLiteral("versionCommand")] = a.versionCommand;
@@ -111,10 +119,12 @@ QList<Agent> AgentConfig::parse(const QByteArray &data) const
         a.configDir = o.value(QStringLiteral("configDir")).toString();
         a.icon = o.value(QStringLiteral("icon")).toString();
         a.color = o.value(QStringLiteral("color")).toString();
+        a.cardColor = o.value(QStringLiteral("cardColor")).toString();
         a.installCommand = o.value(QStringLiteral("installCommand")).toString();
         a.updateCommand = o.value(QStringLiteral("updateCommand")).toString();
         a.versionCommand = o.value(QStringLiteral("versionCommand")).toString();
         a.setupCommand = o.value(QStringLiteral("setupCommand")).toString();
+        a.icon = resolveIcon(a.icon);
         result.append(a);
     }
     return result;
@@ -144,6 +154,7 @@ void AgentConfig::migrate(const QList<Agent> &defaults)
             fill(it->configDir, def.configDir);
             fill(it->icon, def.icon);
             fill(it->color, def.color);
+            fill(it->cardColor, def.cardColor);
             fill(it->installCommand, def.installCommand);
             fill(it->updateCommand, def.updateCommand);
             fill(it->versionCommand, def.versionCommand);
@@ -152,4 +163,79 @@ void AgentConfig::migrate(const QList<Agent> &defaults)
     }
     if (changed)
         save();
+}
+
+// --- Palette color assignment -----------------------------------------------
+
+bool AgentConfig::assignPaletteColors()
+{
+    // Catppuccin Mocha palette — vibrant colors that read well on the dark
+    // card background (#313244).
+    static const QStringList palette = {
+        QStringLiteral("#f38ba8"), // Red
+        QStringLiteral("#fab387"), // Peach
+        QStringLiteral("#f9e2af"), // Yellow
+        QStringLiteral("#a6e3a1"), // Green
+        QStringLiteral("#94e2d5"), // Teal
+        QStringLiteral("#89b4fa"), // Blue
+        QStringLiteral("#cba6f7"), // Mauve
+        QStringLiteral("#f5c2e7"), // Pink
+    };
+
+    bool changed = false;
+    for (int i = 0; i < m_agents.size(); ++i) {
+        if (m_agents[i].color.isEmpty()) {
+            m_agents[i].color = palette[i % palette.size()];
+            changed = true;
+        }
+    }
+    return changed;
+}
+
+// --- Icon resolution --------------------------------------------------------
+
+QString AgentConfig::resolveIcon(const QString &raw)
+{
+    if (raw.isEmpty())
+        return QStringLiteral("qrc:/icons/default.svg");
+
+    // Built-in resources and remote URLs are used as-is.
+    if (raw.startsWith(QStringLiteral("qrc:/"))
+        || raw.startsWith(QStringLiteral("http://"))
+        || raw.startsWith(QStringLiteral("https://")))
+        return raw;
+
+    // Treat anything else as a local file path. Expand environment variables
+    // and ~ so users can write e.g. "%USERPROFILE%/icons/my-agent.svg".
+    const QString expanded = expandEnv(raw);
+    const QFileInfo fi(expanded);
+    if (fi.exists())
+        return QUrl::fromLocalFile(fi.absoluteFilePath()).toString();
+
+    // File not found — fall back to the default icon rather than showing
+    // nothing.
+    return QStringLiteral("qrc:/icons/default.svg");
+}
+
+QString AgentConfig::expandEnv(const QString &path)
+{
+    QString result = path;
+    // Expand %VAR% style variables (Windows), e.g. %USERPROFILE%.
+    static const QRegularExpression re(QStringLiteral("%(\\w+)%"));
+    QRegularExpressionMatchIterator it = re.globalMatch(result);
+    QString out;
+    int cursor = 0;
+    while (it.hasNext()) {
+        const QRegularExpressionMatch m = it.next();
+        out += result.mid(cursor, m.capturedStart() - cursor);
+        const QString var = m.captured(1);
+        const QString val = qEnvironmentVariable(qUtf8Printable(var));
+        out += val.isEmpty() ? m.captured(0) : val;
+        cursor = m.capturedEnd();
+    }
+    out += result.mid(cursor);
+    // Expand ~ to the home directory (unix style, convenience).
+    out.replace(QStringLiteral("~/"),
+                QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + QStringLiteral("/"));
+    return out;
 }

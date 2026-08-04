@@ -74,7 +74,7 @@ Page {
         }
 
         Label {
-            text: qsTr("首次运行设置命令")
+            text: qsTr("First-run setup command")
             color: "#a6adc8"
             font.pixelSize: 13
         }
@@ -83,11 +83,11 @@ Page {
             Layout.fillWidth: true
             text: agentData.setupCommand || ""
             color: "#cdd6f4"
-            placeholderText: qsTr("首次启动前运行的一次性命令（可选）")
+            placeholderText: qsTr("One-time command to run before first launch (optional)")
             background: Rectangle { color: "#313244"; radius: 8; border.color: "#45475a" }
         }
         Label {
-            text: qsTr("留空则无前置操作。成功运行一次后不再重复。")
+            text: qsTr("Leave empty for no prerequisite. Won't repeat after one successful run.")
             color: "#6c7086"
             font.pixelSize: 11
             Layout.fillWidth: true

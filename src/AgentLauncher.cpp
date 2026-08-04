@@ -500,7 +500,7 @@ void AgentLauncher::install(const QString &id)
     const Agent &a = m_model->agents().at(row);
 
     if (a.running) {
-        emit launchFailed(id, tr("请先关闭 %1 后再进行安装/更新。").arg(a.name));
+        emit launchFailed(id, tr("Please close %1 before installing/updating.").arg(a.name));
         return;
     }
     if (a.installCommand.isEmpty()) {
@@ -579,7 +579,7 @@ void AgentLauncher::updateTool(const QString &id)
     const Agent &a = m_model->agents().at(row);
 
     if (a.running) {
-        emit launchFailed(id, tr("请先关闭 %1 后再进行安装/更新。").arg(a.name));
+        emit launchFailed(id, tr("Please close %1 before installing/updating.").arg(a.name));
         return;
     }
     if (a.updateCommand.isEmpty()) {

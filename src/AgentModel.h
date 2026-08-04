@@ -18,6 +18,7 @@ public:
         ConfigDirRole,
         IconRole,
         ColorRole,
+        CardColorRole,
         RunningRole,
         LaunchingRole,
         InstallCommandRole,

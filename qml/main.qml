@@ -112,14 +112,14 @@ ApplicationWindow {
             spacing: 14
 
             Label {
-                text: qsTr("确认退出")
+                text: qsTr("Confirm Exit")
                 color: "#89b4fa"
                 font.pixelSize: 16
                 font.bold: true
             }
             Label {
                 Layout.fillWidth: true
-                text: qsTr("本次会话通过 AgentLauncher 启动了后台终端，是否在退出前关闭它们？")
+                text: qsTr("Background terminals were launched via AgentLauncher this session. Close them before exiting?")
                 color: "#cdd6f4"
                 font.pixelSize: 13
                 wrapMode: Text.Wrap
@@ -130,7 +130,7 @@ ApplicationWindow {
 
                 Button {
                     Layout.fillWidth: true
-                    text: qsTr("是，关闭后台终端")
+                    text: qsTr("Yes, close background terminals")
                     background: Rectangle { radius: 8; color: parent.down ? Qt.darker("#89b4fa", 1.3) : (parent.hovered ? Qt.darker("#89b4fa", 1.15) : "#89b4fa") }
                     contentItem: Label { text: parent.text; color: "#1e1e2e"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                     onClicked: {
@@ -142,7 +142,7 @@ ApplicationWindow {
                 }
                 Button {
                     Layout.fillWidth: true
-                    text: qsTr("否，直接退出")
+                    text: qsTr("No, just exit")
                     background: Rectangle { radius: 8; color: parent.down ? "#45475a" : (parent.hovered ? "#4a4d62" : "#313244") }
                     contentItem: Label { text: parent.text; color: "#cdd6f4"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                     onClicked: {
