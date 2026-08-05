@@ -4,92 +4,92 @@
 <context>
     <name>AgentCard</name>
     <message>
-        <location filename="../qml/AgentCard.qml" line="93"/>
-        <location filename="../qml/AgentCard.qml" line="404"/>
+        <location filename="../qml/AgentCard.qml" line="94"/>
+        <location filename="../qml/AgentCard.qml" line="414"/>
         <source>Close</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location filename="../qml/AgentCard.qml" line="93"/>
-        <location filename="../qml/AgentCard.qml" line="316"/>
+        <location filename="../qml/AgentCard.qml" line="94"/>
+        <location filename="../qml/AgentCard.qml" line="326"/>
         <source>Start</source>
         <translation>开启</translation>
     </message>
     <message>
-        <location filename="../qml/AgentCard.qml" line="102"/>
-        <location filename="../qml/AgentCard.qml" line="228"/>
+        <location filename="../qml/AgentCard.qml" line="103"/>
+        <location filename="../qml/AgentCard.qml" line="238"/>
         <source>Update</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="../qml/AgentCard.qml" line="102"/>
-        <location filename="../qml/AgentCard.qml" line="170"/>
+        <location filename="../qml/AgentCard.qml" line="103"/>
+        <location filename="../qml/AgentCard.qml" line="180"/>
         <source>Install</source>
         <translation>安装</translation>
     </message>
     <message>
-        <location filename="../qml/AgentCard.qml" line="112"/>
-        <location filename="../qml/AgentCard.qml" line="347"/>
+        <location filename="../qml/AgentCard.qml" line="113"/>
+        <location filename="../qml/AgentCard.qml" line="357"/>
         <source>Configure</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../qml/AgentCard.qml" line="116"/>
+        <location filename="../qml/AgentCard.qml" line="117"/>
         <source>Open config folder</source>
         <translation>打开配置文件夹</translation>
     </message>
     <message>
-        <location filename="../qml/AgentCard.qml" line="120"/>
+        <location filename="../qml/AgentCard.qml" line="121"/>
         <source>Re-initialize</source>
         <translation>重新初始化</translation>
     </message>
     <message>
-        <location filename="../qml/AgentCard.qml" line="175"/>
+        <location filename="../qml/AgentCard.qml" line="185"/>
         <source>Please close before installing</source>
         <translation>请先关闭后再安装</translation>
     </message>
     <message>
-        <location filename="../qml/AgentCard.qml" line="233"/>
+        <location filename="../qml/AgentCard.qml" line="243"/>
         <source>Please close before updating</source>
         <translation>请先关闭后再更新</translation>
     </message>
     <message>
-        <location filename="../qml/AgentCard.qml" line="192"/>
+        <location filename="../qml/AgentCard.qml" line="202"/>
         <source>Installed</source>
         <translation>已安装</translation>
     </message>
     <message>
-        <location filename="../qml/AgentCard.qml" line="284"/>
+        <location filename="../qml/AgentCard.qml" line="294"/>
         <source>Setting up…</source>
         <translation>正在设置…</translation>
     </message>
     <message>
-        <location filename="../qml/AgentCard.qml" line="285"/>
+        <location filename="../qml/AgentCard.qml" line="295"/>
         <source>Installing…</source>
         <translation>正在安装…</translation>
     </message>
     <message>
-        <location filename="../qml/AgentCard.qml" line="286"/>
+        <location filename="../qml/AgentCard.qml" line="296"/>
         <source>Starting…</source>
         <translation>正在启动…</translation>
     </message>
     <message>
-        <location filename="../qml/AgentCard.qml" line="287"/>
+        <location filename="../qml/AgentCard.qml" line="297"/>
         <source>Stopping…</source>
         <translation>正在停止…</translation>
     </message>
     <message>
-        <location filename="../qml/AgentCard.qml" line="288"/>
+        <location filename="../qml/AgentCard.qml" line="298"/>
         <source>Running</source>
         <translation>运行中</translation>
     </message>
     <message>
-        <location filename="../qml/AgentCard.qml" line="288"/>
+        <location filename="../qml/AgentCard.qml" line="298"/>
         <source>Stopped</source>
         <translation>已停止</translation>
     </message>
     <message>
-        <location filename="../qml/AgentCard.qml" line="316"/>
+        <location filename="../qml/AgentCard.qml" line="326"/>
         <source>Open</source>
         <translation>打开</translation>
     </message>
@@ -97,86 +97,117 @@
 <context>
     <name>AgentLauncher</name>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="66"/>
+        <location filename="../src/AgentLauncher.cpp" line="77"/>
         <source>Startup command is empty.</source>
         <translation>启动命令为空。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="79"/>
+        <location filename="../src/AgentLauncher.cpp" line="90"/>
         <source>Cannot find &apos;%1&apos; on your PATH. Make sure it is installed and on PATH.</source>
         <translation>在 PATH 中找不到 &apos;%1&apos;，请确认已安装且在 PATH 中。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="110"/>
+        <location filename="../src/AgentLauncher.cpp" line="138"/>
         <source>Failed to start &apos;%1&apos;.</source>
         <translation>启动 &apos;%1&apos; 失败。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="138"/>
+        <location filename="../src/AgentLauncher.cpp" line="166"/>
         <source>This agent wasn&apos;t started from the launcher; stop it with its own command.</source>
         <translation>此代理不是从启动器启动的，请用其自身命令关闭。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="161"/>
+        <location filename="../src/AgentLauncher.cpp" line="189"/>
         <source>Failed to stop process (PID %1).</source>
         <translation>停止进程失败（PID %1）。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="403"/>
-        <location filename="../src/AgentLauncher.cpp" line="546"/>
-        <location filename="../src/AgentLauncher.cpp" line="624"/>
+        <location filename="../src/AgentLauncher.cpp" line="495"/>
+        <source>Failed to create a temporary batch file for setup.</source>
+        <translation>无法为设置命令创建临时批处理文件。</translation>
+    </message>
+    <message>
+        <location filename="../src/AgentLauncher.cpp" line="530"/>
+        <source>stderr:
+%1</source>
+        <translation>标准错误：
+%1</translation>
+    </message>
+    <message>
+        <location filename="../src/AgentLauncher.cpp" line="532"/>
+        <source>stdout:
+%1</source>
+        <translation>标准输出：
+%1</translation>
+    </message>
+    <message>
+        <location filename="../src/AgentLauncher.cpp" line="534"/>
+        <location filename="../src/AgentLauncher.cpp" line="681"/>
+        <location filename="../src/AgentLauncher.cpp" line="759"/>
         <source>(no output)</source>
         <translation>（无输出）</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="405"/>
+        <location filename="../src/AgentLauncher.cpp" line="538"/>
+        <source>Setup command failed (exit code %1).
+
+Command: %2
+
+%3</source>
+        <translation>设置命令失败（退出码 %1）。
+
+命令：%2
+
+%3</translation>
+    </message>
+    <message>
         <source>Setup command failed (exit code %1):
 %2</source>
-        <translation>设置命令失败（退出码 %1）：
+        <translation type="vanished">设置命令失败（退出码 %1）：
 %2</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="417"/>
+        <location filename="../src/AgentLauncher.cpp" line="552"/>
         <source>Failed to start setup command.</source>
         <translation>启动设置命令失败。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="503"/>
-        <location filename="../src/AgentLauncher.cpp" line="582"/>
+        <location filename="../src/AgentLauncher.cpp" line="638"/>
+        <location filename="../src/AgentLauncher.cpp" line="717"/>
         <source>Please close %1 before installing/updating.</source>
         <translation>请先关闭 %1 后再进行安装/更新。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="508"/>
+        <location filename="../src/AgentLauncher.cpp" line="643"/>
         <source>No install command configured for %1.</source>
         <translation>%1 未配置安装命令。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="548"/>
+        <location filename="../src/AgentLauncher.cpp" line="683"/>
         <source>Install failed (exit code %1):
 %2</source>
         <translation>安装失败（退出码 %1）：
 %2</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="567"/>
+        <location filename="../src/AgentLauncher.cpp" line="702"/>
         <source>Failed to start install command.</source>
         <translation>启动安装命令失败。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="587"/>
+        <location filename="../src/AgentLauncher.cpp" line="722"/>
         <source>No update command configured for %1.</source>
         <translation>%1 未配置更新命令。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="626"/>
+        <location filename="../src/AgentLauncher.cpp" line="761"/>
         <source>Update failed (exit code %1):
 %2</source>
         <translation>更新失败（退出码 %1）：
 %2</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="642"/>
+        <location filename="../src/AgentLauncher.cpp" line="777"/>
         <source>Failed to start update command.</source>
         <translation>启动更新命令失败。</translation>
     </message>
@@ -297,12 +328,17 @@
         <translation>否，直接退出</translation>
     </message>
     <message>
-        <location filename="../qml/main.qml" line="182"/>
+        <location filename="../qml/main.qml" line="156"/>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <location filename="../qml/main.qml" line="191"/>
         <source>Launch failed</source>
         <translation>启动失败</translation>
     </message>
     <message>
-        <location filename="../qml/main.qml" line="196"/>
+        <location filename="../qml/main.qml" line="213"/>
         <source>OK</source>
         <translation>确定</translation>
     </message>

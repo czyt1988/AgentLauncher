@@ -3,6 +3,7 @@
 
 #include <QDesktopServices>
 #include <QDir>
+#include <QDateTime>
 #include <QFile>
 #include <QFileInfo>
 #include <QIODevice>
@@ -13,7 +14,9 @@
 #include <QPointer>
 #include <QProcess>
 #include <QRegularExpression>
+#include <QProcessEnvironment>
 #include <QStandardPaths>
+#include <QTemporaryFile>
 #include <QTimer>
 #include <QUrl>
 
@@ -29,6 +32,13 @@ AgentLauncher::AgentLauncher(AgentModel *model, QObject *parent)
 void AgentLauncher::start()
 {
     loadSetupState();
+    // Mark every agent with a versionCommand as "checking" before any QML
+    // paint so the spinner is visible from the first frame, even if the
+    // version process finishes before the first render.
+    for (const Agent &a : m_model->agents()) {
+        if (!a.versionCommand.isEmpty())
+            m_model->setCheckingVersion(a.id, true);
+    }
     checkAll();
     checkVersions();
     m_timer->start(3000);
@@ -58,7 +68,8 @@ void AgentLauncher::doLaunch(const QString &id)
     const int row = m_model->indexOf(id);
     if (row < 0)
         return;
-    const QString command = m_model->agents().at(row).command;
+    const Agent &a = m_model->agents().at(row);
+    const QString command = a.command;
 
     // Split command into program + arguments on whitespace.
     const QStringList parts = QProcess::splitCommand(command);
@@ -103,6 +114,23 @@ void AgentLauncher::doLaunch(const QString &id)
         proc.setArguments(args);
     }
     proc.setWorkingDirectory(QStandardPaths::writableLocation(QStandardPaths::HomeLocation));
+
+    // If a token file is configured, read it and set QWEN_SERVER_TOKEN in the
+    // process environment. This lets the daemon pick up the bearer token
+    // without a complex --token argument on the command line.
+    if (!a.tokenFile.isEmpty()) {
+        const QString tokenPath = expandEnv(a.tokenFile);
+        QFile f(tokenPath);
+        if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            const QString token = QString::fromUtf8(f.readAll()).trimmed();
+            f.close();
+            if (!token.isEmpty()) {
+                QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+                env.insert(QStringLiteral("QWEN_SERVER_TOKEN"), token);
+                proc.setProcessEnvironment(env);
+            }
+        }
+    }
 
     qint64 pid = 0;
     const bool ok = proc.startDetached(&pid);
@@ -202,9 +230,26 @@ void AgentLauncher::openWeb(const QString &id)
     const int row = m_model->indexOf(id);
     if (row < 0)
         return;
-    const QString url = m_model->agents().at(row).webUrl;
+    const Agent &a = m_model->agents().at(row);
+    QString url = a.webUrl;
     if (url.isEmpty())
         return;
+
+    // If a token file is configured, read it and append the token as a URL
+    // fragment (#token=<value>) so the web UI can authenticate to mutation
+    // routes (e.g. POST /workspaces). The fragment is never sent to the
+    // server, keeping the token out of access logs and Referer headers.
+    if (!a.tokenFile.isEmpty()) {
+        const QString tokenPath = expandEnv(a.tokenFile);
+        QFile f(tokenPath);
+        if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            const QString token = QString::fromUtf8(f.readAll()).trimmed();
+            f.close();
+            if (!token.isEmpty())
+                url += QStringLiteral("#token=") + token;
+        }
+    }
+
     QDesktopServices::openUrl(QUrl(url));
 }
 
@@ -328,30 +373,89 @@ void AgentLauncher::checkVersion(const QString &id)
     if (cmd.isEmpty())
         return;
 
+    const int epoch = ++m_versionEpoch[id];
+    m_model->setCheckingVersion(id, true);
+
+    const qint64 startMs = QDateTime::currentMSecsSinceEpoch();
+
     auto *proc = new QProcess(this);
     proc->setProgram(QStringLiteral("cmd"));
     proc->setArguments({QStringLiteral("/c"), cmd});
     // Default channel mode → CREATE_NO_WINDOW → no visible console.
 
     const QString capturedId = id;
+    const int capturedEpoch = epoch;
+
+    // Helper: clear checkingVersion after a minimum 500 ms visibility window.
+    // Guarded by epoch so a stale timer from a previous check can't clear the
+    // flag while a newer check is still in progress. Safe to call multiple
+    // times (e.g. timeout kill also triggers finished) — only the first
+    // matching-epoch call actually clears the flag.
+    auto scheduleClear = [this, capturedId, capturedEpoch, startMs]() {
+        const qint64 elapsed = QDateTime::currentMSecsSinceEpoch() - startMs;
+        const qint64 delay = qMax(0LL, 500 - elapsed);
+        QTimer::singleShot(static_cast<int>(delay), this,
+                [this, capturedId, capturedEpoch]() {
+                    if (m_versionEpoch.value(capturedId) == capturedEpoch)
+                        m_model->setCheckingVersion(capturedId, false);
+                });
+    };
+
     connect(proc, &QProcess::finished, this,
-            [this, capturedId, proc](int exitCode, QProcess::ExitStatus) {
-                if (exitCode == 0) {
-                    const QString output =
-                        QString::fromLocal8Bit(proc->readAllStandardOutput());
+            [this, capturedId, capturedEpoch, proc, scheduleClear](int exitCode, QProcess::ExitStatus) {
+                const QString stdOutput =
+                    QString::fromLocal8Bit(proc->readAllStandardOutput());
+                const QString errOutput =
+                    QString::fromLocal8Bit(proc->readAllStandardError());
+
+                // Try to extract a version from stdout, then stderr — some
+                // tools print version info to stderr.
+                QString version = extractVersion(stdOutput);
+                if (version.isEmpty())
+                    version = extractVersion(errOutput);
+
+                if (exitCode == 0 || !version.isEmpty()) {
+                    // Exit code 0, or we found a version string despite a
+                    // non-zero exit. Some tools exit non-zero for --version.
                     m_model->setInstalled(capturedId, true);
-                    m_model->setVersion(capturedId, extractVersion(output));
+                    m_model->setVersion(capturedId, version);
+                    if (version.isEmpty())
+                        qWarning() << "AgentLauncher: version command succeeded for"
+                                   << capturedId << "but could not parse version from:"
+                                   << stdOutput << errOutput;
                 } else {
+                    qWarning() << "AgentLauncher: version command failed for" << capturedId
+                               << "- exit code:" << exitCode
+                               << "stdout:" << stdOutput.trimmed()
+                               << "stderr:" << errOutput.trimmed();
                     m_model->setInstalled(capturedId, false);
                     m_model->setVersion(capturedId, QString());
                 }
+                scheduleClear();
                 proc->deleteLater();
             });
 
+    connect(proc, &QProcess::errorOccurred, this,
+            [this, capturedId, capturedEpoch, proc, scheduleClear](QProcess::ProcessError err) {
+                if (proc->state() == QProcess::NotRunning) {
+                    qWarning() << "AgentLauncher: version command failed to start for"
+                               << capturedId << "- error:" << err;
+                    m_model->setInstalled(capturedId, false);
+                    m_model->setVersion(capturedId, QString());
+                    scheduleClear();
+                    proc->deleteLater();
+                }
+            });
+
     // Safety timeout: kill hung version commands after 10s.
-    QTimer::singleShot(10000, proc, [proc]() {
-        if (proc->state() != QProcess::NotRunning)
+    QTimer::singleShot(10000, proc, [this, capturedId, capturedEpoch, proc, scheduleClear]() {
+        if (proc->state() != QProcess::NotRunning) {
+            qWarning() << "AgentLauncher: version command timed out for" << capturedId;
             proc->kill();
+            m_model->setInstalled(capturedId, false);
+            m_model->setVersion(capturedId, QString());
+            scheduleClear();
+        }
     });
 
     proc->start();
@@ -379,14 +483,34 @@ void AgentLauncher::runSetup(const QString &id)
 
     m_model->setSetupping(id, true);
 
+    // Write the setup command to a temporary .cmd file and execute that.
+    // QProcess on Windows escapes internal " as \" (the C convention), but
+    // cmd.exe doesn't understand \" — it treats \ as a literal character,
+    // corrupting paths and causing "invalid filename syntax" errors. Writing
+    // to a batch file sidesteps QProcess argument quoting entirely.
+    auto *batchFile = new QTemporaryFile(
+        QDir::tempPath() + QStringLiteral("/agentlauncher_XXXXXX.cmd"));
+    if (!batchFile->open()) {
+        m_model->setSetupping(id, false);
+        emit launchFailed(id, tr("Failed to create a temporary batch file for setup."));
+        delete batchFile;
+        return;
+    }
+    batchFile->write(QStringLiteral("@echo off\r\n").toLocal8Bit());
+    batchFile->write(cmd.toLocal8Bit());
+    batchFile->write("\r\n");
+    batchFile->close();
+
     auto *proc = new QProcess(this);
+    batchFile->setParent(proc); // cleaned up when proc is deleteLater'd
     proc->setProgram(QStringLiteral("cmd"));
-    proc->setArguments({QStringLiteral("/c"), cmd});
+    proc->setArguments({QStringLiteral("/c"), batchFile->fileName()});
     // Default channel mode → CREATE_NO_WINDOW → no visible console.
 
     const QString capturedId = id;
+    const QString capturedCmd = cmd;
     connect(proc, &QProcess::finished, this,
-            [this, capturedId, proc](int exitCode, QProcess::ExitStatus) {
+            [this, capturedId, capturedCmd, proc](int exitCode, QProcess::ExitStatus) {
                 m_model->setSetupping(capturedId, false);
 
                 if (exitCode == 0) {
@@ -395,16 +519,27 @@ void AgentLauncher::runSetup(const QString &id)
                     doLaunch(capturedId);
                 } else {
                     const QString errOutput =
-                        QString::fromLocal8Bit(proc->readAllStandardError());
+                        QString::fromLocal8Bit(proc->readAllStandardError()).trimmed();
                     const QString stdOutput =
-                        QString::fromLocal8Bit(proc->readAllStandardOutput());
-                    QString detail = errOutput.isEmpty() ? stdOutput : errOutput;
-                    if (detail.isEmpty())
-                        detail = tr("(no output)");
+                        QString::fromLocal8Bit(proc->readAllStandardOutput()).trimmed();
+
+                    // Build a detail string showing both stdout and stderr
+                    // so the user can diagnose command-line failures.
+                    QStringList parts;
+                    if (!errOutput.isEmpty())
+                        parts << tr("stderr:\n%1").arg(errOutput);
+                    if (!stdOutput.isEmpty())
+                        parts << tr("stdout:\n%1").arg(stdOutput);
+                    const QString detail = parts.isEmpty()
+                        ? tr("(no output)")
+                        : parts.join(QStringLiteral("\n\n"));
+
                     emit launchFailed(capturedId,
-                        tr("Setup command failed (exit code %1):\n%2")
+                        tr("Setup command failed (exit code %1).\n\n"
+                           "Command: %2\n\n%3")
                             .arg(exitCode)
-                            .arg(detail.trimmed()));
+                            .arg(capturedCmd)
+                            .arg(detail));
                 }
                 proc->deleteLater();
             });

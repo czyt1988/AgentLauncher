@@ -72,6 +72,7 @@ bool AgentConfig::save()
         o[QStringLiteral("updateCommand")] = a.updateCommand;
         o[QStringLiteral("versionCommand")] = a.versionCommand;
         o[QStringLiteral("setupCommand")] = a.setupCommand;
+        o[QStringLiteral("tokenFile")] = a.tokenFile;
         arr.append(o);
     }
     QJsonObject root;
@@ -124,6 +125,7 @@ QList<Agent> AgentConfig::parse(const QByteArray &data) const
         a.updateCommand = o.value(QStringLiteral("updateCommand")).toString();
         a.versionCommand = o.value(QStringLiteral("versionCommand")).toString();
         a.setupCommand = o.value(QStringLiteral("setupCommand")).toString();
+        a.tokenFile = o.value(QStringLiteral("tokenFile")).toString();
         a.icon = resolveIcon(a.icon);
         result.append(a);
     }
@@ -159,6 +161,7 @@ void AgentConfig::migrate(const QList<Agent> &defaults)
             fill(it->updateCommand, def.updateCommand);
             fill(it->versionCommand, def.versionCommand);
             fill(it->setupCommand, def.setupCommand);
+            fill(it->tokenFile, def.tokenFile);
         }
     }
     if (changed)

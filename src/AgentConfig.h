@@ -20,6 +20,9 @@ struct Agent
     QString updateCommand;
     QString versionCommand;
     QString setupCommand; // one-time setup command run before first launch
+    QString tokenFile;    // path to a bearer token file (env-expanded); set as
+                          // QWEN_SERVER_TOKEN on launch and appended as
+                          // #token=<value> to the web URL when opening the browser
     bool running = false;
     bool launching = false; // transient UI state, never persisted
     bool installed = false;       // runtime, detected via versionCommand
@@ -27,6 +30,7 @@ struct Agent
     bool installing = false;      // transient UI state, never persisted
     bool setupDone = false;       // runtime state, persisted in agent_state.json
     bool setupping = false;       // transient UI state, never persisted
+    bool checkingVersion = false; // transient UI state: version check in progress
 };
 
 class AgentConfig

@@ -29,7 +29,8 @@ public:
         VersionRole,
         InstallingRole,
         SetupDoneRole,
-        SetuppingRole
+        SetuppingRole,
+        CheckingVersionRole
     };
     Q_ENUM(Roles)
 
@@ -53,6 +54,7 @@ public slots:
     void setInstalling(const QString &id, bool installing);
     void setSetupDone(const QString &id, bool done);
     void setSetupping(const QString &id, bool setupping);
+    void setCheckingVersion(const QString &id, bool checking);
 
 private:
     QList<Agent> m_agents;

@@ -21,6 +21,7 @@ Item {
     property string setupCommand_p: setupCommand
     property bool setupping_p: setupping
     property bool setupDone_p: setupDone
+    property bool checkingVersion_p: checkingVersion
 
     signal configureRequested(string id)
 
@@ -123,9 +124,9 @@ Item {
             }
         }
 
-        // Top-left indicator: version label (installed), download icon (not
-        // installed), or spinner (installing). Mirrors the top-right × stop
-        // button's positioning.
+        // Top-left indicator: "checking…" label (version check in progress),
+        // version label (installed), download icon (not installed), or spinner
+        // (installing). Mirrors the top-right × stop button's positioning.
         Item {
             id: versionIndicator
             anchors.top: parent.top
@@ -134,6 +135,15 @@ Item {
             anchors.leftMargin: 8
             width: 60
             height: 22
+
+            // Checking version state: small spinner
+            BusyIndicator {
+                visible: root.checkingVersion_p
+                running: root.checkingVersion_p
+                width: 16
+                height: 16
+                anchors.centerIn: parent
+            }
 
             // Installing state: spinner
             BusyIndicator {
@@ -146,7 +156,7 @@ Item {
 
             // Not installed: download icon (clickable → install)
             Item {
-                visible: !root.installed_p && !root.installing_p
+                visible: !root.installed_p && !root.installing_p && !root.checkingVersion_p
                 anchors.fill: parent
 
                 Rectangle {
@@ -184,7 +194,7 @@ Item {
 
             // Installed: version label + update button
             Item {
-                visible: root.installed_p && !root.installing_p
+                visible: root.installed_p && !root.installing_p && !root.checkingVersion_p
                 anchors.fill: parent
 
                 Label {

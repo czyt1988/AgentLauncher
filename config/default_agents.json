@@ -27,7 +27,7 @@
         {
             "id": "qwen-code",
             "name": "Qwen Code",
-            "command": "cmd /c \"for /f %t in (%USERPROFILE%\\.qwen-serve-token) do qwen serve --hostname 127.0.0.1 --port 4170 --token %t\"",
+            "command": "qwen serve",
             "webUrl": "http://127.0.0.1:4170",
             "configDir": "%USERPROFILE%/.qwen",
             "icon": "qrc:/icons/qwen-code.svg",
@@ -35,7 +35,8 @@
             "installCommand": "npm install -g @qwen-code/qwen-code",
             "updateCommand": "npm update -g @qwen-code/qwen-code",
             "versionCommand": "qwen --version",
-            "setupCommand": "if not exist \"%USERPROFILE%\\.qwen-serve-token\" powershell -NoProfile -Command \"[guid]::NewGuid().ToString('N')+[guid]::NewGuid().ToString('N')\" > \"%USERPROFILE%\\.qwen-serve-token\""
+            "setupCommand": "if not exist \"%USERPROFILE%\\.qwen-serve-token\" powershell -NoProfile -Command \"[guid]::NewGuid().ToString('N')+[guid]::NewGuid().ToString('N')\" > \"%USERPROFILE%\\.qwen-serve-token\"",
+            "tokenFile": "%USERPROFILE%/.qwen-serve-token"
         },
         {
             "id": "openclaw",

@@ -40,6 +40,7 @@ QVariant AgentModel::data(const QModelIndex &index, int role) const
     case InstallingRole: return a.installing;
     case SetupDoneRole:  return a.setupDone;
     case SetuppingRole:  return a.setupping;
+    case CheckingVersionRole: return a.checkingVersion;
     }
     return {};
 }
@@ -65,7 +66,8 @@ QHash<int, QByteArray> AgentModel::roleNames() const
         { VersionRole,     "version" },
         { InstallingRole,  "installing" },
         { SetupDoneRole,   "setupDone" },
-        { SetuppingRole,   "setupping" }
+        { SetuppingRole,   "setupping" },
+        { CheckingVersionRole, "checkingVersion" }
     };
 }
 
@@ -104,11 +106,13 @@ QVariantMap AgentModel::agent(const QString &id) const
             m[QStringLiteral("updateCommand")] = a.updateCommand;
             m[QStringLiteral("versionCommand")] = a.versionCommand;
             m[QStringLiteral("setupCommand")] = a.setupCommand;
+        m[QStringLiteral("tokenFile")] = a.tokenFile;
             m[QStringLiteral("installed")] = a.installed;
             m[QStringLiteral("version")] = a.version;
             m[QStringLiteral("installing")] = a.installing;
             m[QStringLiteral("setupDone")] = a.setupDone;
             m[QStringLiteral("setupping")] = a.setupping;
+            m[QStringLiteral("checkingVersion")] = a.checkingVersion;
             break;
         }
     }
@@ -197,4 +201,16 @@ void AgentModel::setSetupping(const QString &id, bool setupping)
     m_agents[row].setupping = setupping;
     const QModelIndex idx = index(row, 0);
     emit dataChanged(idx, idx, { SetuppingRole });
+}
+
+void AgentModel::setCheckingVersion(const QString &id, bool checking)
+{
+    const int row = indexOf(id);
+    if (row < 0)
+        return;
+    if (m_agents[row].checkingVersion == checking)
+        return;
+    m_agents[row].checkingVersion = checking;
+    const QModelIndex idx = index(row, 0);
+    emit dataChanged(idx, idx, { CheckingVersionRole });
 }

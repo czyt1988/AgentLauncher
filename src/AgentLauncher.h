@@ -61,6 +61,11 @@ private:
     // by a timer from a previous attempt.
     QHash<QString, int> m_launchEpoch;
 
+    // id -> version-check epoch, bumped on each checkVersion() call. Used to
+    // invalidate stale delayed-clear timers so a re-check can't have its
+    // spinner cleared early by a timer from a previous check.
+    QHash<QString, int> m_versionEpoch;
+
     QString expandEnv(const QString &path) const;
 
     // Resolve a bare command (e.g. "qwen") to a full executable path,

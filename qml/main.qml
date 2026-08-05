@@ -151,6 +151,13 @@ ApplicationWindow {
                         window.close()
                     }
                 }
+                Button {
+                    Layout.fillWidth: true
+                    text: qsTr("Cancel")
+                    background: Rectangle { radius: 8; color: parent.down ? "#45475a" : (parent.hovered ? "#4a4d62" : "#313244") }
+                    contentItem: Label { text: parent.text; color: "#cdd6f4"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: exitConfirmPopup.close()
+                }
             }
         }
     }
@@ -163,7 +170,8 @@ ApplicationWindow {
         anchors.centerIn: parent
         modal: true
         focus: true
-        width: 420
+        width: 500
+        height: Math.min(errorColumn.implicitHeight + 2 * errorPopup.padding, 400)
         padding: 20
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
@@ -175,6 +183,7 @@ ApplicationWindow {
         }
 
         ColumnLayout {
+            id: errorColumn
             width: errorPopup.availableWidth
             spacing: 14
 
@@ -184,12 +193,20 @@ ApplicationWindow {
                 font.pixelSize: 16
                 font.bold: true
             }
-            Label {
+            ScrollView {
                 Layout.fillWidth: true
-                text: errorPopup.message
-                color: "#cdd6f4"
-                font.pixelSize: 13
-                wrapMode: Text.Wrap
+                Layout.fillHeight: true
+                clip: true
+
+                Label {
+                    Layout.fillWidth: true
+                    text: errorPopup.message
+                    color: "#cdd6f4"
+                    font.pixelSize: 12
+                    font.family: "Consolas, Monaco, monospace"
+                    wrapMode: Text.Wrap
+                    textFormat: Text.PlainText
+                }
             }
             Button {
                 Layout.alignment: Qt.AlignRight
