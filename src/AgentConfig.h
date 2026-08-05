@@ -42,14 +42,18 @@ public:
     QList<Agent> agents() const { return m_agents; }
     void setAgents(const QList<Agent> &agents) { m_agents = agents; }
 
+    QString title() const { return m_title; }
+    void setTitle(const QString &title) { m_title = title; }
+
     void updateAgent(const QString &id, const QString &command, const QString &webUrl);
 
     static QString configFilePath();
 
 private:
     QList<Agent> m_agents;
+    QString m_title;
 
-    QList<Agent> parse(const QByteArray &data) const;
+    QList<Agent> parse(const QByteArray &data, QString &outTitle) const;
 
     // Resolve an icon string to a usable image URL:
     //   empty            → qrc:/icons/default.svg
@@ -66,7 +70,7 @@ private:
     // agents. Called after load() so on-disk configs created from older
     // defaults (missing installCommand/updateCommand/versionCommand) get
     // the new fields populated automatically.
-    void migrate(const QList<Agent> &defaults);
+    void migrate(const QList<Agent> &defaults, const QString &defaultTitle);
 
     // Assign a color from the built-in palette to every agent whose `color`
     // is still empty after migration. Colors are assigned by cycling through

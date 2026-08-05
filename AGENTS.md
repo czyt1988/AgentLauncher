@@ -34,6 +34,11 @@ docs/          MkDocs site (English + zh/)
 
 ## Config schema (agents.json)
 
+The root object has an optional `title` field (string). When set, it
+overrides the application window title; when empty or absent, the default
+`AgentLauncher` title is used. All other root-level content is the `agents`
+array described below.
+
 Each agent object has: `id`, `name`, `command`, `webUrl`, `configDir`, `icon`,
 `color`, `cardColor`, `installCommand`, `updateCommand`, `versionCommand`,
 `setupCommand`. See `config/default_agents.json`. New agents are added by

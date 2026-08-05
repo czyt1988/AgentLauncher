@@ -416,7 +416,8 @@ Item {
                 ToolTip.delay: 300
                 onClicked: {
                     root.stopping = true
-                    launcher.stop(root.agentId_p)
+                    if (!launcher.stop(root.agentId_p))
+                        root.stopping = false
                 }
             }
         }

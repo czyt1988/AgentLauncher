@@ -36,6 +36,7 @@ int main(int argc, char *argv[])
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("agentModel"), &model);
     engine.rootContext()->setContextProperty(QStringLiteral("launcher"), &launcher);
+    engine.rootContext()->setContextProperty(QStringLiteral("appTitle"), config.title());
 
     engine.load(QUrl(QStringLiteral("qrc:/qml/main.qml")));
     if (engine.rootObjects().isEmpty())

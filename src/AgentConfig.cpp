@@ -32,23 +32,25 @@ void AgentConfig::load()
 
     // Load the bundled default config for migration fallback.
     QList<Agent> defaults;
+    QString defaultTitle;
     {
         QFile def(QStringLiteral(":/config/default_agents.json"));
         if (def.open(QIODevice::ReadOnly))
-            defaults = parse(def.readAll());
+            defaults = parse(def.readAll(), defaultTitle);
     }
 
     if (!file.open(QIODevice::ReadOnly)) {
         // Fall back to the bundled default directly.
         m_agents = defaults;
+        m_title = defaultTitle;
         return;
     }
 
-    m_agents = parse(file.readAll());
+    m_agents = parse(file.readAll(), m_title);
 
     // Merge in any fields missing from an older on-disk config.
     if (!defaults.isEmpty())
-        migrate(defaults);
+        migrate(defaults, defaultTitle);
 
     // Assign palette colors to agents that still have no color.
     if (assignPaletteColors())
@@ -76,6 +78,7 @@ bool AgentConfig::save()
         arr.append(o);
     }
     QJsonObject root;
+    root[QStringLiteral("title")] = m_title;
     root[QStringLiteral("agents")] = arr;
 
     const QString path = configFilePath();
@@ -105,11 +108,13 @@ QString AgentConfig::configFilePath()
     return dir + QStringLiteral("/agents.json");
 }
 
-QList<Agent> AgentConfig::parse(const QByteArray &data) const
+QList<Agent> AgentConfig::parse(const QByteArray &data, QString &outTitle) const
 {
     QList<Agent> result;
     const QJsonDocument doc = QJsonDocument::fromJson(data);
-    const QJsonArray arr = doc.object().value(QStringLiteral("agents")).toArray();
+    const QJsonObject root = doc.object();
+    outTitle = root.value(QStringLiteral("title")).toString();
+    const QJsonArray arr = root.value(QStringLiteral("agents")).toArray();
     for (const QJsonValue &v : arr) {
         const QJsonObject o = v.toObject();
         Agent a;
@@ -132,9 +137,16 @@ QList<Agent> AgentConfig::parse(const QByteArray &data) const
     return result;
 }
 
-void AgentConfig::migrate(const QList<Agent> &defaults)
+void AgentConfig::migrate(const QList<Agent> &defaults, const QString &defaultTitle)
 {
     bool changed = false;
+
+    // Fill in an empty on-disk title from the default.
+    if (m_title.isEmpty() && !defaultTitle.isEmpty()) {
+        m_title = defaultTitle;
+        changed = true;
+    }
+
     for (const Agent &def : defaults) {
         auto it = std::find_if(m_agents.begin(), m_agents.end(),
             [&](const Agent &a) { return a.id == def.id; });

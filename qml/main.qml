@@ -9,7 +9,7 @@ ApplicationWindow {
     minimumWidth: 720
     minimumHeight: 480
     visible: true
-    title: qsTr("AgentLauncher")
+    title: appTitle.length > 0 ? appTitle : qsTr("AgentLauncher")
 
     color: "#1e1e2e"
 
