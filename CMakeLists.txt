@@ -17,12 +17,14 @@ set(APP_SOURCES
     src/AgentConfig.cpp
     src/AgentModel.cpp
     src/AgentLauncher.cpp
+    src/Logger.cpp
 )
 
 set(APP_HEADERS
     src/AgentConfig.h
     src/AgentModel.h
     src/AgentLauncher.h
+    src/Logger.h
 )
 
 qt_add_executable(AgentLauncher

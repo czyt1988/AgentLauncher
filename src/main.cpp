@@ -1,6 +1,7 @@
 #include "AgentConfig.h"
 #include "AgentLauncher.h"
 #include "AgentModel.h"
+#include "Logger.h"
 
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
@@ -11,6 +12,8 @@
 int main(int argc, char *argv[])
 {
     QGuiApplication::setApplicationName(QStringLiteral("AgentLauncher"));
+
+    Logger::install();
 
     QGuiApplication app(argc, argv);
     QQuickStyle::setStyle(QStringLiteral("Basic"));
