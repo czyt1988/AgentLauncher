@@ -23,7 +23,13 @@ echo ""
 echo "=== [2/4] Prepare dist directory ==="
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
-cp "$BUILD_DIR/AgentLauncher.exe" "$DIST_DIR/"
+# MSBuild (VS generator) puts Release output under $BUILD_DIR/Release/;
+# Ninja puts it directly in $BUILD_DIR/. Handle both.
+if [[ -f "$BUILD_DIR/Release/AgentLauncher.exe" ]]; then
+    cp "$BUILD_DIR/Release/AgentLauncher.exe" "$DIST_DIR/"
+else
+    cp "$BUILD_DIR/AgentLauncher.exe" "$DIST_DIR/"
+fi
 
 echo ""
 echo "=== [3/4] windeployqt: pull Qt/QML dependencies ==="
@@ -44,3 +50,4 @@ echo ""
 echo "=== Done ==="
 echo "Distribution directory: $DIST_DIR"
 echo "Zip archive:            dist/$ZIP_NAME"
+pause

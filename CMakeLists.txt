@@ -30,6 +30,7 @@ set(APP_HEADERS
 qt_add_executable(AgentLauncher
     ${APP_SOURCES}
     ${APP_HEADERS}
+    src/app.rc
 )
 
 qt_add_resources(AgentLauncher "app_resources"
@@ -44,6 +45,7 @@ qt_add_resources(AgentLauncher "app_resources"
         icons/terminal.svg
         icons/cube.svg
         icons/bot.svg
+        icons/app-icon.png
         qml/main.qml
         qml/AgentCard.qml
         qml/ConfigPage.qml

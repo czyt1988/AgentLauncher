@@ -45,22 +45,125 @@ ApplicationWindow {
                 width: scrollView.availableWidth
                 spacing: 8
 
-                Label {
-                    text: qsTr("Agent Launcher")
-                    color: "#cdd6f4"
-                    font.pixelSize: 26
-                    font.bold: true
+                // Header row: title + subtitle on the left, runtime version
+                // badges (Python / Node.js) on the right.
+                RowLayout {
+                    Layout.fillWidth: true
                     Layout.leftMargin: 24
+                    Layout.rightMargin: 24
                     Layout.topMargin: 24
-                    Layout.bottomMargin: 8
-                }
+                    spacing: 12
 
-                Label {
-                    text: qsTr("Launch AI coding agents and open their web UI")
-                    color: "#7f849c"
-                    font.pixelSize: 13
-                    Layout.leftMargin: 24
-                    Layout.bottomMargin: 8
+                    ColumnLayout {
+                        spacing: 0
+
+                        Label {
+                            text: qsTr("Agent Launcher")
+                            color: "#cdd6f4"
+                            font.pixelSize: 26
+                            font.bold: true
+                            Layout.bottomMargin: 8
+                        }
+
+                        Label {
+                            text: qsTr("Launch AI coding agents and open their web UI")
+                            color: "#7f849c"
+                            font.pixelSize: 13
+                            Layout.bottomMargin: 8
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    // Runtime version badges
+                    Row {
+                        spacing: 8
+                        Layout.alignment: Qt.AlignTop | Qt.AlignRight
+
+                        // Python badge
+                        Rectangle {
+                            id: pythonBadge
+                            readonly property bool installed: launcher.pythonInstalled
+                            readonly property string version: launcher.pythonVersion
+                            radius: 11
+                            implicitWidth: pyBadgeLayout.implicitWidth + 20
+                            implicitHeight: 24
+                            color: "#313244"
+                            border.color: installed ? "#45475a" : "#f38ba8"
+                            border.width: 1
+
+                            RowLayout {
+                                id: pyBadgeLayout
+                                anchors.centerIn: parent
+                                spacing: 4
+
+                                Text {
+                                    text: "Python"
+                                    color: "#7f849c"
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                }
+                                Text {
+                                    text: pythonBadge.installed ? pythonBadge.version : "\u00D7"
+                                    color: pythonBadge.installed ? "#a6e3a1" : "#f38ba8"
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                ToolTip.text: pythonBadge.installed
+                                    ? qsTr("Python %1").arg(pythonBadge.version)
+                                    : qsTr("Python is not installed or not in PATH. Agents requiring Python may not work.")
+                                ToolTip.visible: containsMouse
+                                ToolTip.delay: 300
+                            }
+                        }
+
+                        // Node.js badge
+                        Rectangle {
+                            id: nodeBadge
+                            readonly property bool installed: launcher.nodeInstalled
+                            readonly property string version: launcher.nodeVersion
+                            radius: 11
+                            implicitWidth: nodeBadgeLayout.implicitWidth + 20
+                            implicitHeight: 24
+                            color: "#313244"
+                            border.color: installed ? "#45475a" : "#f38ba8"
+                            border.width: 1
+
+                            RowLayout {
+                                id: nodeBadgeLayout
+                                anchors.centerIn: parent
+                                spacing: 4
+
+                                Text {
+                                    text: "Node"
+                                    color: "#7f849c"
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                }
+                                Text {
+                                    text: nodeBadge.installed ? nodeBadge.version : "\u00D7"
+                                    color: nodeBadge.installed ? "#a6e3a1" : "#f38ba8"
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                ToolTip.text: nodeBadge.installed
+                                    ? qsTr("Node.js %1").arg(nodeBadge.version)
+                                    : qsTr("Node.js is not installed or not in PATH. Agents requiring Node.js may not work.")
+                                ToolTip.visible: containsMouse
+                                ToolTip.delay: 300
+                            }
+                        }
+                    }
                 }
 
                 Flow {

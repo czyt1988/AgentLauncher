@@ -4,6 +4,7 @@
 #include "Logger.h"
 
 #include <QGuiApplication>
+#include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
@@ -16,6 +17,7 @@ int main(int argc, char *argv[])
     Logger::install();
 
     QGuiApplication app(argc, argv);
+    app.setWindowIcon(QIcon(QStringLiteral(":/icons/app-icon.png")));
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     // Load locale-appropriate translation from embedded :/i18n/ resources.

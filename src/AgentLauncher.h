@@ -14,8 +14,19 @@ class AgentLauncher : public QObject
 {
     Q_OBJECT
 
+    // Runtime version detection (Python / Node.js) for the top-right badges.
+    Q_PROPERTY(QString pythonVersion READ pythonVersion NOTIFY runtimeVersionsChanged)
+    Q_PROPERTY(bool pythonInstalled READ pythonInstalled NOTIFY runtimeVersionsChanged)
+    Q_PROPERTY(QString nodeVersion READ nodeVersion NOTIFY runtimeVersionsChanged)
+    Q_PROPERTY(bool nodeInstalled READ nodeInstalled NOTIFY runtimeVersionsChanged)
+
 public:
     explicit AgentLauncher(AgentModel *model, QObject *parent = nullptr);
+
+    QString pythonVersion() const { return m_pythonVersion; }
+    bool pythonInstalled() const { return m_pythonInstalled; }
+    QString nodeVersion() const { return m_nodeVersion; }
+    bool nodeInstalled() const { return m_nodeInstalled; }
 
     Q_INVOKABLE void launch(const QString &id);
     Q_INVOKABLE bool stop(const QString &id);
@@ -43,6 +54,9 @@ signals:
 
     // Emitted when an install/update finishes (success or failure).
     void installFinished(const QString &id, bool success, const QString &message);
+
+    // Emitted when Python/Node.js version detection completes.
+    void runtimeVersionsChanged();
 
 private slots:
     void checkAll();
@@ -85,6 +99,16 @@ private:
     QString stateFilePath() const;
     void loadSetupState();
     void markSetupDone(const QString &id);
+
+    // Detect installed Python/Node.js versions for the top-right badges.
+    void detectRuntimeVersions();
+    void detectRuntime(const QString &program, const QString &versionArg,
+                       const QString &runtimeName);
+
+    QString m_pythonVersion;
+    bool m_pythonInstalled = false;
+    QString m_nodeVersion;
+    bool m_nodeInstalled = false;
 };
 
 #endif // AGENTLAUNCHER_H
