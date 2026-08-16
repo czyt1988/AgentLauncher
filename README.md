@@ -1,7 +1,8 @@
 # AgentLauncher
 
 A small Qt6/QML + C++ desktop app that lets you launch the **web UI** of
-several AI coding agents (Kimi Code, OpenCode, Qwen Code) from a single card
+several AI coding agents (Kimi Code, OpenCode, Qwen Code, DeepSeek Harness)
+from a single card
 grid, and quickly open their config directories. Everything is
 **config-driven** — new agents are added by editing a JSON file, no code
 changes required.
@@ -31,6 +32,8 @@ changes required.
 | Kimi Code | `kimi web` | `http://127.0.0.1:58627` | `%USERPROFILE%/.kimi-code` |
 | OpenCode | `opencode web --port 4096` | `http://127.0.0.1:4096` | `%USERPROFILE%/.config/opencode` |
 | Qwen Code | `qwen serve` | `http://127.0.0.1:4170` | `%USERPROFILE%/.qwen` |
+| OpenClaw | `openclaw gateway --port 18789` | `http://127.0.0.1:18789` | `%USERPROFILE%/.openclaw` |
+| DeepSeek Harness | `dsh web` | `http://127.0.0.1:3080` | `%USERPROFILE%/.dsh` |
 
 > OpenCode uses a random port by default, so AgentLauncher pins it to `4096`
 > (both the `--port` flag and the Web URL) so that health-checking and

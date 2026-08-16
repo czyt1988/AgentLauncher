@@ -166,12 +166,16 @@ Item {
                            ? Qt.rgba(137/255, 180/255, 250/255, 0.22)
                            : "transparent"
                 }
-                Text {
+                Image {
                     anchors.centerIn: parent
-                    text: "\u2193"
-                    color: downloadArea.containsMouse ? "#89b4fa" : "#7f849c"
-                    font.pixelSize: 14
-                    font.bold: true
+                    source: downloadArea.containsMouse
+                            ? "qrc:/icons/download-hover.svg"
+                            : "qrc:/icons/download.svg"
+                    sourceSize.width: 16
+                    sourceSize.height: 16
+                    width: 16
+                    height: 16
+                    fillMode: Image.PreserveAspectFit
                 }
                 MouseArea {
                     id: downloadArea

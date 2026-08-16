@@ -16,9 +16,29 @@
 #include <QRegularExpression>
 #include <QProcessEnvironment>
 #include <QStandardPaths>
+#include <QStringDecoder>
 #include <QTemporaryFile>
 #include <QTimer>
 #include <QUrl>
+
+namespace {
+
+// Decode bytes captured from a child process (npm/node/PowerShell etc.).
+// Modern CLI tools emit UTF-8, so try that first; if the bytes aren't valid
+// UTF-8, fall back to the system locale codec (e.g. GBK on zh-CN Windows) so
+// legacy batch/cmd output still decodes correctly instead of mojibake.
+QString decodeProcessOutput(const QByteArray &data)
+{
+    if (data.isEmpty())
+        return {};
+    QStringDecoder decoder(QStringDecoder::Utf8);
+    const QString result = decoder.decode(data);
+    if (!decoder.hasError())
+        return result;
+    return QString::fromLocal8Bit(data);
+}
+
+} // namespace
 
 AgentLauncher::AgentLauncher(AgentModel *model, QObject *parent)
     : QObject(parent)
@@ -404,9 +424,9 @@ void AgentLauncher::checkVersion(const QString &id)
     connect(proc, &QProcess::finished, this,
             [this, capturedId, capturedEpoch, proc, scheduleClear](int exitCode, QProcess::ExitStatus) {
                 const QString stdOutput =
-                    QString::fromLocal8Bit(proc->readAllStandardOutput());
+                    decodeProcessOutput(proc->readAllStandardOutput());
                 const QString errOutput =
-                    QString::fromLocal8Bit(proc->readAllStandardError());
+                    decodeProcessOutput(proc->readAllStandardError());
 
                 // Try to extract a version from stdout, then stderr — some
                 // tools print version info to stderr.
@@ -519,9 +539,9 @@ void AgentLauncher::runSetup(const QString &id)
                     doLaunch(capturedId);
                 } else {
                     const QString errOutput =
-                        QString::fromLocal8Bit(proc->readAllStandardError()).trimmed();
+                        decodeProcessOutput(proc->readAllStandardError()).trimmed();
                     const QString stdOutput =
-                        QString::fromLocal8Bit(proc->readAllStandardOutput()).trimmed();
+                        decodeProcessOutput(proc->readAllStandardOutput()).trimmed();
 
                     // Build a detail string showing both stdout and stderr
                     // so the user can diagnose command-line failures.
@@ -665,9 +685,9 @@ void AgentLauncher::install(const QString &id)
 
                 // Read output before deleteLater (reads become no-ops after).
                 const QString output = guard
-                    ? QString::fromLocal8Bit(guard->readAllStandardOutput()) : QString();
+                    ? decodeProcessOutput(guard->readAllStandardOutput()) : QString();
                 const QString errOutput = guard
-                    ? QString::fromLocal8Bit(guard->readAllStandardError()) : QString();
+                    ? decodeProcessOutput(guard->readAllStandardError()) : QString();
 
                 if (guard)
                     guard->deleteLater();
@@ -743,9 +763,9 @@ void AgentLauncher::updateTool(const QString &id)
                 m_model->setInstalling(capturedId, false);
 
                 const QString output = guard
-                    ? QString::fromLocal8Bit(guard->readAllStandardOutput()) : QString();
+                    ? decodeProcessOutput(guard->readAllStandardOutput()) : QString();
                 const QString errOutput = guard
-                    ? QString::fromLocal8Bit(guard->readAllStandardError()) : QString();
+                    ? decodeProcessOutput(guard->readAllStandardError()) : QString();
 
                 if (guard)
                     guard->deleteLater();

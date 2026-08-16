@@ -73,6 +73,7 @@ Use `qrc:/icons/<name>.svg` to reference an icon bundled with the app:
 | `qrc:/icons/opencode.svg` | OpenCode branded icon |
 | `qrc:/icons/qwen-code.svg` | Qwen Code branded icon |
 | `qrc:/icons/openclaw.svg` | OpenClaw branded icon |
+| `qrc:/icons/deepseek-harness.svg` | DeepSeek Harness branded icon |
 
 ### 2. Local file path
 
@@ -214,6 +215,7 @@ back to disk if anything changed.
 | OpenCode | `opencode web --port 4096` | `http://127.0.0.1:4096` | `%USERPROFILE%/.config/opencode` |
 | Qwen Code | `qwen serve ...` | `http://127.0.0.1:4170` | `%USERPROFILE%/.qwen` |
 | OpenClaw | `openclaw gateway --port 18789` | `http://127.0.0.1:18789` | `%USERPROFILE%/.openclaw` |
+| DeepSeek Harness | `dsh web` | `http://127.0.0.1:3080` | `%USERPROFILE%/.dsh` |
 
 !!! note "OpenCode uses a random port by default"
     OpenCode picks a random free port each run, which makes health-checking and

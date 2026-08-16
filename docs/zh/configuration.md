@@ -73,6 +73,7 @@ AgentLauncher 采用配置化驱动。所有 agent 定义都放在单个 `agents
 | `qrc:/icons/opencode.svg` | OpenCode 品牌图标 |
 | `qrc:/icons/qwen-code.svg` | Qwen Code 品牌图标 |
 | `qrc:/icons/openclaw.svg` | OpenClaw 品牌图标 |
+| `qrc:/icons/deepseek-harness.svg` | DeepSeek Harness 品牌图标 |
 
 ### 2. 本地文件路径
 
@@ -207,6 +208,7 @@ agent 的主强调色，用于：
 | OpenCode | `opencode web --port 4096` | `http://127.0.0.1:4096` | `%USERPROFILE%/.config/opencode` |
 | Qwen Code | `qwen serve ...` | `http://127.0.0.1:4170` | `%USERPROFILE%/.qwen` |
 | OpenClaw | `openclaw gateway --port 18789` | `http://127.0.0.1:18789` | `%USERPROFILE%/.openclaw` |
+| DeepSeek Harness | `dsh web` | `http://127.0.0.1:3080` | `%USERPROFILE%/.dsh` |
 
 !!! note "OpenCode 默认随机端口"
     OpenCode 每次运行随机选取空闲端口，这会让健康检查和「浏览器打开」不可靠。

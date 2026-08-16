@@ -39,11 +39,14 @@ qt_add_resources(AgentLauncher "app_resources"
         icons/kimi-code.svg
         icons/opencode.svg
         icons/openclaw.svg
+        icons/deepseek-harness.svg
         icons/qwen-code.svg
         icons/default.svg
         icons/terminal.svg
         icons/cube.svg
         icons/bot.svg
+        icons/download.svg
+        icons/download-hover.svg
         qml/main.qml
         qml/AgentCard.qml
         qml/ConfigPage.qml

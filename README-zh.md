@@ -1,7 +1,7 @@
 # AgentLauncher
 
 一个用 **Qt6/QML + C++** 开发的桌面小工具，让你能从同一个卡片网格中快速启动多个
-AI 编码 agent 的 **Web 端**（Kimi Code、OpenCode、Qwen Code），并一键打开它们的
+AI 编码 agent 的 **Web 端**（Kimi Code、OpenCode、Qwen Code、DeepSeek Harness），并一键打开它们的
 配置目录。所有内容都**配置化驱动**——新增 agent 只需编辑一个 JSON 文件，无需改代码。
 
 ![平台: Windows · Linux · macOS](https://img.shields.io/badge/平台-Windows%20%7C%20Linux%20%7C%20macOS-blue)
@@ -24,6 +24,8 @@ AI 编码 agent 的 **Web 端**（Kimi Code、OpenCode、Qwen Code），并一�
 | Kimi Code | `kimi web` | `http://127.0.0.1:58627` | `%USERPROFILE%/.kimi-code` |
 | OpenCode | `opencode web --port 4096` | `http://127.0.0.1:4096` | `%USERPROFILE%/.config/opencode` |
 | Qwen Code | `qwen serve` | `http://127.0.0.1:4170` | `%USERPROFILE%/.qwen` |
+| OpenClaw | `openclaw gateway --port 18789` | `http://127.0.0.1:18789` | `%USERPROFILE%/.openclaw` |
+| DeepSeek Harness | `dsh web` | `http://127.0.0.1:3080` | `%USERPROFILE%/.dsh` |
 
 > OpenCode 默认使用随机端口，因此 AgentLauncher 在默认配置里固定为 `4096`
 > （`--port` 参数与 Web 地址同时固定），以保证健康检查和「浏览器打开」可靠。

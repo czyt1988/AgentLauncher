@@ -49,6 +49,18 @@
             "installCommand": "npm install -g openclaw",
             "updateCommand": "npm update -g openclaw",
             "versionCommand": "openclaw --version"
+        },
+        {
+            "id": "deepseek-harness",
+            "name": "DeepSeek Harness",
+            "command": "dsh web",
+            "webUrl": "http://127.0.0.1:3080",
+            "configDir": "%USERPROFILE%/.dsh",
+            "icon": "qrc:/icons/deepseek-harness.svg",
+            "color": "#4D6BFE",
+            "installCommand": "npm install -g @deepseek-ai/dsh",
+            "updateCommand": "npm update -g @deepseek-ai/dsh",
+            "versionCommand": "dsh --version"
         }
     ]
 }
