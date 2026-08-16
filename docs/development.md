@@ -61,4 +61,8 @@ Open `http://127.0.0.1:8000`. The site is bilingual (English default, 中文 und
 
 - Add new agents via `agents.json`, never by hard-coding in C++.
 - Keep the dark theme palette (Catppuccin Mocha) when editing QML.
-- Don't add a "stop agent" feature — each agent manages its own lifecycle.
+- Running state is detected via HTTP health check to `webUrl`; do not add
+  process-sniffing logic.
+- The stop button terminates only the process tree that this launcher started
+  in the current session; agents detected as running but started elsewhere are
+  left to their own lifecycle.

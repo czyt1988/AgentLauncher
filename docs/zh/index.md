@@ -4,6 +4,8 @@
 agent 的 **Web 端**（Kimi Code、OpenCode、Qwen Code），并一键打开它们的配置目录。
 所有内容**配置化驱动**——新增 agent 只需编辑一个 JSON 文件，无需改代码。
 
+![AgentLauncher 主界面](../pic/screenshot-main-page.png)
+
 ## 为什么需要
 
 每个 AI 编码 agent 都有自己的命令行工具和启动本地 web 服务的方式，默认端口不同、
@@ -17,6 +19,9 @@ agent 的 **Web 端**（Kimi Code、OpenCode、Qwen Code），并一键打开它
 - **配置**按钮进入该 agent 的设置页（编辑命令 / web 地址、打开配置目录）。
 - 通过 HTTP 健康检查检测**已启动状态**；运行中的卡片用 agent 专属颜色做边框高亮 + 背景着色。
 - 点击**已启动**的卡片即用默认浏览器打开其 web 端。
+- 运行中的卡片右上角显示**停止**按钮（×），可结束本次会话内启动的 agent。
+- 右上角**运行时版本徽标**显示检测到的 Python 与 Node.js 版本；若缺失会以红色提示，方便判断哪些 agent 可能无法运行。
+- 卡片左上角显示 agent 的**版本号**（当配置了 `versionCommand` 时）。
 - **完全配置化**，统一写在 `agents.json`。
 
 ## 快速开始

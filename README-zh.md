@@ -8,12 +8,17 @@ AI 编码 agent 的 **Web 端**（Kimi Code、OpenCode、Qwen Code、DeepSeek Ha
 ![协议: MIT](https://img.shields.io/badge/协议-MIT-green)
 ![Qt6](https://img.shields.io/badge/Qt-6.5%2B-41cd52)
 
+![AgentLauncher 主界面](docs/pic/screenshot-main-page.png)
+
 ## 功能
 
 - 首页以**卡片网格**展示已配置的 agent。
 - 每张卡片有**启动**按钮（启动 agent 的 web 服务）和**配置**按钮（进入该 agent 设置页）。
 - 通过 HTTP 健康检查检测**已启动状态**；运行中的卡片用 agent 专属颜色做边框高亮 + 背景着色。
 - 点击**已启动**的卡片（或其「打开」按钮）即用默认浏览器打开该 agent 的 web 端。
+- 运行中的卡片右上角显示**停止**按钮（×），可结束本次会话内启动的 agent。
+- 右上角**运行时版本徽标**显示检测到的 Python 与 Node.js 版本；若缺失会以红色提示，方便判断哪些 agent 可能无法运行。
+- 卡片左上角显示 agent 的**版本号**（当配置了 `versionCommand` 时）。
 - **配置页**：可编辑启动命令（例如改 `--port`）、编辑 web 地址，并一键在文件管理器中打开 agent 的配置目录。
 - **配置化驱动**：所有 agent、命令、URL、配置目录都写在 `agents.json` 里。新增 agent 只需往文件里加一个对象。
 
