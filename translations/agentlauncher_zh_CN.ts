@@ -97,58 +97,58 @@
 <context>
     <name>AgentLauncher</name>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="97"/>
+        <location filename="../src/AgentLauncher.cpp" line="98"/>
         <source>Startup command is empty.</source>
         <translation>启动命令为空。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="110"/>
+        <location filename="../src/AgentLauncher.cpp" line="111"/>
         <source>Cannot find &apos;%1&apos; on your PATH. Make sure it is installed and on PATH.</source>
         <translation>在 PATH 中找不到 &apos;%1&apos;，请确认已安装且在 PATH 中。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="158"/>
+        <location filename="../src/AgentLauncher.cpp" line="159"/>
         <source>Failed to start &apos;%1&apos;.</source>
         <translation>启动 &apos;%1&apos; 失败。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="186"/>
+        <location filename="../src/AgentLauncher.cpp" line="187"/>
         <source>This agent wasn&apos;t started from the launcher; stop it with its own command.</source>
         <translation>此代理不是从启动器启动的，请用其自身命令关闭。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="209"/>
+        <location filename="../src/AgentLauncher.cpp" line="210"/>
         <source>Failed to stop process (PID %1).</source>
         <translation>停止进程失败（PID %1）。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="515"/>
+        <location filename="../src/AgentLauncher.cpp" line="516"/>
         <source>Failed to create a temporary batch file for setup.</source>
         <translation>无法为设置命令创建临时批处理文件。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="550"/>
+        <location filename="../src/AgentLauncher.cpp" line="551"/>
         <source>stderr:
 %1</source>
         <translation>标准错误：
 %1</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="552"/>
+        <location filename="../src/AgentLauncher.cpp" line="553"/>
         <source>stdout:
 %1</source>
         <translation>标准输出：
 %1</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="554"/>
-        <location filename="../src/AgentLauncher.cpp" line="701"/>
-        <location filename="../src/AgentLauncher.cpp" line="779"/>
+        <location filename="../src/AgentLauncher.cpp" line="555"/>
+        <location filename="../src/AgentLauncher.cpp" line="804"/>
+        <location filename="../src/AgentLauncher.cpp" line="882"/>
         <source>(no output)</source>
         <translation>（无输出）</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="558"/>
+        <location filename="../src/AgentLauncher.cpp" line="559"/>
         <source>Setup command failed (exit code %1).
 
 Command: %2
@@ -167,47 +167,47 @@ Command: %2
 %2</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="572"/>
+        <location filename="../src/AgentLauncher.cpp" line="573"/>
         <source>Failed to start setup command.</source>
         <translation>启动设置命令失败。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="658"/>
-        <location filename="../src/AgentLauncher.cpp" line="737"/>
+        <location filename="../src/AgentLauncher.cpp" line="761"/>
+        <location filename="../src/AgentLauncher.cpp" line="840"/>
         <source>Please close %1 before installing/updating.</source>
         <translation>请先关闭 %1 后再进行安装/更新。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="663"/>
+        <location filename="../src/AgentLauncher.cpp" line="766"/>
         <source>No install command configured for %1.</source>
         <translation>%1 未配置安装命令。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="703"/>
+        <location filename="../src/AgentLauncher.cpp" line="806"/>
         <source>Install failed (exit code %1):
 %2</source>
         <translation>安装失败（退出码 %1）：
 %2</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="722"/>
+        <location filename="../src/AgentLauncher.cpp" line="825"/>
         <source>Failed to start install command.</source>
         <translation>启动安装命令失败。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="742"/>
+        <location filename="../src/AgentLauncher.cpp" line="845"/>
         <source>No update command configured for %1.</source>
         <translation>%1 未配置更新命令。</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="781"/>
+        <location filename="../src/AgentLauncher.cpp" line="884"/>
         <source>Update failed (exit code %1):
 %2</source>
         <translation>更新失败（退出码 %1）：
 %2</translation>
     </message>
     <message>
-        <location filename="../src/AgentLauncher.cpp" line="797"/>
+        <location filename="../src/AgentLauncher.cpp" line="900"/>
         <source>Failed to start update command.</source>
         <translation>启动更新命令失败。</translation>
     </message>
