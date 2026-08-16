@@ -298,49 +298,69 @@ Command: %2
         <translation>AgentLauncher</translation>
     </message>
     <message>
-        <location filename="../qml/main.qml" line="49"/>
+        <location filename="../qml/main.qml" line="61"/>
         <source>Agent Launcher</source>
         <translation>Agent 启动器</translation>
     </message>
     <message>
-        <location filename="../qml/main.qml" line="59"/>
+        <location filename="../qml/main.qml" line="69"/>
         <source>Launch AI coding agents and open their web UI</source>
         <translation>启动 AI 编程代理并打开其 Web 界面</translation>
     </message>
     <message>
-        <location filename="../qml/main.qml" line="115"/>
+        <location filename="../qml/main.qml" line="218"/>
         <source>Confirm Exit</source>
         <translation>确认退出</translation>
     </message>
     <message>
-        <location filename="../qml/main.qml" line="122"/>
+        <location filename="../qml/main.qml" line="225"/>
         <source>Background terminals were launched via AgentLauncher this session. Close them before exiting?</source>
         <translation>本次会话通过 AgentLauncher 启动了后台终端，是否在退出前关闭它们？</translation>
     </message>
     <message>
-        <location filename="../qml/main.qml" line="133"/>
+        <location filename="../qml/main.qml" line="236"/>
         <source>Yes, close background terminals</source>
         <translation>是，关闭后台终端</translation>
     </message>
     <message>
-        <location filename="../qml/main.qml" line="145"/>
+        <location filename="../qml/main.qml" line="248"/>
         <source>No, just exit</source>
         <translation>否，直接退出</translation>
     </message>
     <message>
-        <location filename="../qml/main.qml" line="156"/>
+        <location filename="../qml/main.qml" line="259"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/main.qml" line="191"/>
+        <location filename="../qml/main.qml" line="294"/>
         <source>Launch failed</source>
         <translation>启动失败</translation>
     </message>
     <message>
-        <location filename="../qml/main.qml" line="213"/>
+        <location filename="../qml/main.qml" line="316"/>
         <source>OK</source>
         <translation>确定</translation>
+    </message>
+    <message>
+        <location filename="../qml/main.qml" line="118"/>
+        <source>Python %1</source>
+        <translation>Python %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/main.qml" line="119"/>
+        <source>Python is not installed or not in PATH. Agents requiring Python may not work.</source>
+        <translation>未安装 Python 或 Python 不在环境变量中，这可能影响依赖 Python 的程序运行。</translation>
+    </message>
+    <message>
+        <location filename="../qml/main.qml" line="160"/>
+        <source>Node.js %1</source>
+        <translation>Node.js %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/main.qml" line="161"/>
+        <source>Node.js is not installed or not in PATH. Agents requiring Node.js may not work.</source>
+        <translation>未安装 Node.js 或 Node.js 不在环境变量中，这可能影响依赖 Node.js 的程序运行。</translation>
     </message>
 </context>
 </TS>

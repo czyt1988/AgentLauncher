@@ -61,6 +61,7 @@ void AgentLauncher::start()
     }
     checkAll();
     checkVersions();
+    detectRuntimeVersions();
     m_timer->start(3000);
 }
 
@@ -643,6 +644,108 @@ void AgentLauncher::resetSetup(const QString &id)
 
     if (file.open(QIODevice::WriteOnly))
         file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+}
+
+// --- Runtime version detection (Python / Node.js) -------------------------
+
+void AgentLauncher::detectRuntimeVersions()
+{
+    detectRuntime(QStringLiteral("python"), QStringLiteral("--version"),
+                 QStringLiteral("Python"));
+    detectRuntime(QStringLiteral("node"), QStringLiteral("--version"),
+                 QStringLiteral("Node"));
+}
+
+void AgentLauncher::detectRuntime(const QString &program,
+                                  const QString &versionArg,
+                                  const QString &runtimeName)
+{
+    // Quick PATH check first — if the executable isn't found, there's no
+    // point spawning a process. findExecutable applies PATHEXT on Windows.
+    const QString resolved = QStandardPaths::findExecutable(program);
+    if (resolved.isEmpty()) {
+        if (runtimeName == QLatin1String("Python")) {
+            m_pythonInstalled = false;
+            m_pythonVersion.clear();
+        } else {
+            m_nodeInstalled = false;
+            m_nodeVersion.clear();
+        }
+        emit runtimeVersionsChanged();
+        return;
+    }
+
+    auto *proc = new QProcess(this);
+    proc->setProgram(QStringLiteral("cmd"));
+    proc->setArguments({QStringLiteral("/c"), program + QStringLiteral(" ") + versionArg});
+
+    const QString capturedRuntime = runtimeName;
+
+    connect(proc, &QProcess::finished, this,
+            [this, capturedRuntime, proc](int exitCode, QProcess::ExitStatus) {
+                const QString stdOutput =
+                    QString::fromLocal8Bit(proc->readAllStandardOutput());
+                const QString errOutput =
+                    QString::fromLocal8Bit(proc->readAllStandardError());
+
+                // Some runtimes print version to stdout, others to stderr
+                // (older Python). Check both.
+                QString version = extractVersion(stdOutput);
+                if (version.isEmpty())
+                    version = extractVersion(errOutput);
+
+                if (capturedRuntime == QLatin1String("Python")) {
+                    if (exitCode == 0 || !version.isEmpty()) {
+                        m_pythonInstalled = true;
+                        m_pythonVersion = version;
+                    } else {
+                        m_pythonInstalled = false;
+                        m_pythonVersion.clear();
+                    }
+                } else {
+                    if (exitCode == 0 || !version.isEmpty()) {
+                        m_nodeInstalled = true;
+                        m_nodeVersion = version;
+                    } else {
+                        m_nodeInstalled = false;
+                        m_nodeVersion.clear();
+                    }
+                }
+                emit runtimeVersionsChanged();
+                proc->deleteLater();
+            });
+
+    connect(proc, &QProcess::errorOccurred, this,
+            [this, capturedRuntime, proc](QProcess::ProcessError) {
+                if (proc->state() == QProcess::NotRunning) {
+                    if (capturedRuntime == QLatin1String("Python")) {
+                        m_pythonInstalled = false;
+                        m_pythonVersion.clear();
+                    } else {
+                        m_nodeInstalled = false;
+                        m_nodeVersion.clear();
+                    }
+                    emit runtimeVersionsChanged();
+                    proc->deleteLater();
+                }
+            });
+
+    // Safety timeout: kill hung detection after 10s.
+    QTimer::singleShot(10000, proc, [this, capturedRuntime, proc]() {
+        if (proc->state() != QProcess::NotRunning) {
+            proc->kill();
+            if (capturedRuntime == QLatin1String("Python")) {
+                m_pythonInstalled = false;
+                m_pythonVersion.clear();
+            } else {
+                m_nodeInstalled = false;
+                m_nodeVersion.clear();
+            }
+            emit runtimeVersionsChanged();
+        }
+    });
+
+    proc->start();
 }
 
 // --- Install / Update -----------------------------------------------------

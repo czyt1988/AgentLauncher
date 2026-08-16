@@ -80,6 +80,13 @@ is persisted back to disk if anything changed.
 - Running state is detected by HTTP health check to `webUrl` (any HTTP
   response = running; connection refused/timeout = stopped). Do not add
   process-sniffing logic — keep it HTTP-based for cross-tool consistency.
+- Python and Node.js versions are detected at startup via
+  `AgentLauncher::detectRuntimeVersions()` (runs `python --version` /
+  `node --version` through `cmd /c`). Results are exposed to QML via
+  `Q_PROPERTY` (`pythonVersion`, `pythonInstalled`, `nodeVersion`,
+  `nodeInstalled`) and shown as badges in the top-right corner of the home
+  page. If a runtime is not found on PATH, the badge shows a red × with a
+  tooltip explaining that agents requiring it may not work.
 - Launch uses `QProcess::startDetached` so agents survive the launcher closing.
 - If `setupCommand` is set and hasn't been run yet (tracked in
   `agent_state.json`), `launch()` runs it first via `cmd /c` (no visible
