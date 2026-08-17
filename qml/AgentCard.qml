@@ -135,7 +135,7 @@ Item {
             }
             MenuItem {
                 text: qsTr("Force Stop")
-                visible: root.running_p
+                enabled: root.running_p
                 onTriggered: forceStopConfirm.open()
             }
             MenuItem {
@@ -167,7 +167,7 @@ Item {
             }
             MenuItem {
                 text: qsTr("Re-initialize")
-                visible: root.setupCommand_p.length > 0
+                enabled: root.setupCommand_p.length > 0
                 onTriggered: launcher.resetSetup(root.agentId_p)
             }
         }
