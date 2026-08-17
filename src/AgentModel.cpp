@@ -41,6 +41,7 @@ QVariant AgentModel::data(const QModelIndex &index, int role) const
     case SetupDoneRole:  return a.setupDone;
     case SetuppingRole:  return a.setupping;
     case CheckingVersionRole: return a.checkingVersion;
+    case ConsoleOutputRole: return a.consoleOutput;
     }
     return {};
 }
@@ -67,7 +68,8 @@ QHash<int, QByteArray> AgentModel::roleNames() const
         { InstallingRole,  "installing" },
         { SetupDoneRole,   "setupDone" },
         { SetuppingRole,   "setupping" },
-        { CheckingVersionRole, "checkingVersion" }
+        { CheckingVersionRole, "checkingVersion" },
+        { ConsoleOutputRole, "consoleOutput" }
     };
 }
 
@@ -213,4 +215,16 @@ void AgentModel::setCheckingVersion(const QString &id, bool checking)
     m_agents[row].checkingVersion = checking;
     const QModelIndex idx = index(row, 0);
     emit dataChanged(idx, idx, { CheckingVersionRole });
+}
+
+void AgentModel::setConsoleOutput(const QString &id, const QString &text)
+{
+    const int row = indexOf(id);
+    if (row < 0)
+        return;
+    if (m_agents[row].consoleOutput == text)
+        return;
+    m_agents[row].consoleOutput = text;
+    const QModelIndex idx = index(row, 0);
+    emit dataChanged(idx, idx, { ConsoleOutputRole });
 }

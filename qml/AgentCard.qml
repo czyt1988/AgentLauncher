@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 
 Item {
     id: root
@@ -22,6 +23,8 @@ Item {
     property bool setupping_p: setupping
     property bool setupDone_p: setupDone
     property bool checkingVersion_p: checkingVersion
+    property string consoleOutput_p: consoleOutput
+    property string webUrl_p: webUrl
 
     signal configureRequested(string id)
 
@@ -52,6 +55,37 @@ Item {
     // later) confirms the agent is down. Cleared when running_p goes false.
     property bool stopping: false
     onRunning_pChanged: if (!running_p) stopping = false
+
+    // Console panel visibility. The panel shows live install/update/setup
+    // output; it is shown while a command runs, hidden on success, shown for
+    // 5s on failure, and can be dismissed (×) or re-opened (context menu).
+    property bool consoleVisible: false
+    Timer {
+        id: consoleHideTimer
+        interval: 5000
+        onTriggered: root.consoleVisible = false
+    }
+    // A new install/update/setup run (re)shows the panel and cancels any
+    // pending hide timer from a previous run.
+    onInstalling_pChanged: if (installing_p) { consoleVisible = true; consoleHideTimer.stop() }
+    onSetupping_pChanged: if (setupping_p) { consoleVisible = true; consoleHideTimer.stop() }
+    Connections {
+        target: launcher
+        function onInstallFinished(id, success, message) {
+            if (id !== root.agentId_p)
+                return
+            if (success) {
+                // Success: hide the panel immediately.
+                consoleVisible = false
+                consoleHideTimer.stop()
+            } else {
+                // Failure: keep it visible for 5s so the user can read the
+                // error, then auto-hide.
+                consoleVisible = true
+                consoleHideTimer.restart()
+            }
+        }
+    }
 
     Rectangle {
         id: card
@@ -100,6 +134,11 @@ Item {
                 }
             }
             MenuItem {
+                text: qsTr("Force Stop")
+                visible: root.running_p
+                onTriggered: forceStopConfirm.open()
+            }
+            MenuItem {
                 text: root.installed_p ? qsTr("Update") : qsTr("Install")
                 enabled: !root.installing_p && !root.running_p && root.installCommand_p.length > 0
                 onTriggered: {
@@ -107,6 +146,15 @@ Item {
                         launcher.updateTool(root.agentId_p)
                     else
                         launcher.install(root.agentId_p)
+                }
+            }
+            MenuItem {
+                text: qsTr("Show output")
+                // Only meaningful when there is captured output to display.
+                enabled: root.consoleOutput_p.length > 0
+                onTriggered: {
+                    root.consoleVisible = true
+                    consoleHideTimer.stop()
                 }
             }
             MenuItem {
@@ -256,63 +304,172 @@ Item {
             }
         }
 
-        Column {
-            anchors.fill: parent
-            anchors.margins: 18
-            spacing: 10
+        // Header stack (icon, name, status) anchored directly to the card so
+        // the console panel can anchor to statusLabel as a sibling — QML only
+        // allows anchoring to a parent or sibling, not to a child of another
+        // item. Keeping these out of a Column also means toggling the console
+        // panel doesn't shift the header.
+        Row {
+            id: iconRow
+            anchors.top: parent.top
+            anchors.topMargin: 18
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: 12
 
-            Row {
-                spacing: 12
-                anchors.horizontalCenter: parent.horizontalCenter
+            Image {
+                source: root.icon_p
+                sourceSize.width: 40
+                sourceSize.height: 40
+                width: 40
+                height: 40
+                fillMode: Image.PreserveAspectFit
+            }
 
-                Image {
-                    source: root.icon_p
-                    sourceSize.width: 40
-                    sourceSize.height: 40
-                    width: 40
-                    height: 40
-                    fillMode: Image.PreserveAspectFit
+            Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                width: 12
+                height: 12
+                radius: 6
+                color: root.running_p ? root.agentColor : "#585b70"
+                Behavior on color { ColorAnimation { duration: 180 } }
+            }
+        }
+
+        Label {
+            id: nameLabel
+            text: root.name_p
+            color: "#cdd6f4"
+            font.pixelSize: 18
+            font.bold: true
+            anchors.top: iconRow.bottom
+            anchors.topMargin: 10
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 18
+            anchors.rightMargin: 18
+            horizontalAlignment: Text.AlignHCenter
+        }
+
+        Label {
+            id: statusLabel
+            text: root.flashing ? root.flashMessage
+                                : (root.setupping_p ? qsTr("Setting up…")
+                                                      : (root.installing_p ? qsTr("Installing…")
+                                                      : (root.launching_p ? qsTr("Starting…")
+                                                                          : (root.stopping ? qsTr("Stopping…")
+                                                                                            : (root.running_p ? qsTr("Running") : qsTr("Stopped"))))))
+            color: root.flashing ? "#f38ba8"
+                                 : ((root.setupping_p || root.installing_p || root.launching_p || root.stopping || root.running_p) ? root.agentColor : "#7f849c")
+            font.pixelSize: 12
+            anchors.top: nameLabel.bottom
+            anchors.topMargin: 10
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 18
+            anchors.rightMargin: 18
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideRight
+        }
+
+        // Live console output: while an install/update/setup command is
+        // running (or its output is still showing), the empty space below the
+        // status line down to the buttons becomes a scrollable log so the user
+        // can watch progress instead of a bare spinner. Auto-scrolls to the
+        // latest line as new output streams in. Visibility is governed by
+        // consoleVisible (see the handlers above); the × in the corner lets
+        // the user dismiss it, and the context menu can bring it back.
+        Rectangle {
+            id: consolePanel
+            anchors.top: statusLabel.bottom
+            anchors.topMargin: 6
+            anchors.bottom: buttonRow.top
+            anchors.bottomMargin: 6
+            anchors.left: parent.left
+            anchors.leftMargin: 18
+            anchors.right: parent.right
+            anchors.rightMargin: 18
+            visible: root.consoleOutput_p.length > 0 && root.consoleVisible
+            color: "#11111b"
+            radius: 6
+            border.color: "#45475a"
+            border.width: 1
+            clip: true
+
+            Flickable {
+                id: consoleFlick
+                anchors.fill: parent
+                anchors.margins: 4
+                anchors.rightMargin: 20 // leave room for the × button
+                clip: true
+                contentWidth: width
+                contentHeight: consoleText.implicitHeight
+                flickableDirection: Flickable.VerticalFlick
+                boundsBehavior: Flickable.StopAtBounds
+
+                Text {
+                    id: consoleText
+                    width: consoleFlick.width
+                    text: root.consoleOutput_p
+                    color: "#a6adc8"
+                    font.family: "Consolas, Monaco, Courier New, monospace"
+                    font.pixelSize: 9
+                    wrapMode: Text.Wrap
+                    textFormat: Text.PlainText
                 }
+
+                // Keep the most recent lines in view as output grows.
+                onContentHeightChanged: {
+                    if (contentHeight > height)
+                        contentY = contentHeight - height
+                    else
+                        contentY = 0
+                }
+            }
+
+            // Dismiss button: hides the panel (the output is retained so the
+            // context-menu "Show output" action can bring it back).
+            Item {
+                id: consoleCloseButton
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.topMargin: 2
+                anchors.rightMargin: 2
+                width: 16
+                height: 16
 
                 Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 12
-                    height: 12
-                    radius: 6
-                    color: root.running_p ? root.agentColor : "#585b70"
-                    Behavior on color { ColorAnimation { duration: 180 } }
+                    anchors.fill: parent
+                    radius: 8
+                    color: consoleCloseArea.containsMouse
+                           ? Qt.rgba(243/255, 139/255, 168/255, 0.22)
+                           : "transparent"
+                }
+                Text {
+                    anchors.centerIn: parent
+                    text: "\u00D7"
+                    color: consoleCloseArea.containsMouse ? "#f38ba8" : "#7f849c"
+                    font.pixelSize: 13
+                    font.bold: true
+                }
+                MouseArea {
+                    id: consoleCloseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    ToolTip.text: qsTr("Hide output")
+                    ToolTip.visible: containsMouse
+                    ToolTip.delay: 300
+                    onClicked: {
+                        root.consoleVisible = false
+                        consoleHideTimer.stop()
+                    }
                 }
             }
-
-            Label {
-                text: root.name_p
-                color: "#cdd6f4"
-                font.pixelSize: 18
-                font.bold: true
-                width: parent.width
-                horizontalAlignment: Text.AlignHCenter
-            }
-
-            Label {
-                text: root.flashing ? root.flashMessage
-                                    : (root.setupping_p ? qsTr("Setting up…")
-                                                          : (root.installing_p ? qsTr("Installing…")
-                                                          : (root.launching_p ? qsTr("Starting…")
-                                                                              : (root.stopping ? qsTr("Stopping…")
-                                                                                                : (root.running_p ? qsTr("Running") : qsTr("Stopped"))))))
-                color: root.flashing ? "#f38ba8"
-                                     : ((root.setupping_p || root.installing_p || root.launching_p || root.stopping || root.running_p) ? root.agentColor : "#7f849c")
-                font.pixelSize: 12
-                width: parent.width
-                horizontalAlignment: Text.AlignHCenter
-                elide: Text.ElideRight
-            }
-
         }
 
         // Button row anchored to the bottom of the card so there's no
         // large empty gap below the buttons.
         Row {
+            id: buttonRow
             anchors.bottom: parent.bottom
             anchors.left: parent.left
             anchors.right: parent.right
@@ -422,6 +579,71 @@ Item {
                     root.stopping = true
                     if (!launcher.stop(root.agentId_p))
                         root.stopping = false
+                }
+            }
+        }
+    }
+
+    // Force-stop confirmation. Kills the process listening on this agent's
+    // web port even when the launcher didn't start it (no tracked PID), so
+    // agents started elsewhere can still be terminated. Red border marks it as
+    // a destructive action. Centered over the window (not the 260px card).
+    Popup {
+        id: forceStopConfirm
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        focus: true
+        width: 440
+        padding: 20
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        background: Rectangle {
+            color: "#1e1e2e"
+            border.color: "#f38ba8"
+            border.width: 1
+            radius: 12
+        }
+
+        ColumnLayout {
+            width: forceStopConfirm.availableWidth
+            spacing: 14
+
+            Label {
+                text: qsTr("Force Stop")
+                color: "#f38ba8"
+                font.pixelSize: 16
+                font.bold: true
+            }
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Force stop %1? This will terminate the process serving %2.")
+                    .arg(root.name_p).arg(root.webUrl_p)
+                color: "#cdd6f4"
+                font.pixelSize: 13
+                wrapMode: Text.Wrap
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+
+                Button {
+                    Layout.fillWidth: true
+                    text: qsTr("Force Stop")
+                    background: Rectangle { radius: 8; color: parent.down ? Qt.darker("#f38ba8", 1.3) : (parent.hovered ? Qt.darker("#f38ba8", 1.15) : "#f38ba8") }
+                    contentItem: Label { text: parent.text; color: "#1e1e2e"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: {
+                        forceStopConfirm.close()
+                        root.stopping = true
+                        launcher.forceStop(root.agentId_p)
+                    }
+                }
+                Button {
+                    Layout.fillWidth: true
+                    text: qsTr("Cancel")
+                    background: Rectangle { radius: 8; color: parent.down ? "#45475a" : (parent.hovered ? "#4a4d62" : "#313244") }
+                    contentItem: Label { text: parent.text; color: "#cdd6f4"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: forceStopConfirm.close()
                 }
             }
         }

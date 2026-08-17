@@ -4,6 +4,7 @@
 #include "AgentModel.h"
 
 #include <QHash>
+#include <QList>
 #include <QObject>
 
 class QNetworkAccessManager;
@@ -30,6 +31,10 @@ public:
 
     Q_INVOKABLE void launch(const QString &id);
     Q_INVOKABLE bool stop(const QString &id);
+    // Force-stop: kill the process listening on the agent's web port, even
+    // when the launcher didn't start it (no tracked PID). Used by the card's
+    // right-click "Force Stop" action.
+    Q_INVOKABLE void forceStop(const QString &id);
     Q_INVOKABLE void openWeb(const QString &id);
     Q_INVOKABLE void openConfigDir(const QString &id);
     Q_INVOKABLE bool updateAgent(const QString &id, const QString &command, const QString &webUrl, const QString &setupCommand);
@@ -85,6 +90,14 @@ private:
     // Resolve a bare command (e.g. "qwen") to a full executable path,
     // applying PATHEXT on Windows so .cmd/.bat shims are found.
     static QString resolveProgram(const QString &program);
+
+    // Parse the TCP port from an agent's webUrl. Returns the explicit port,
+    // or the scheme default (80/443) when none is given; -1 if unparseable.
+    int portFromWebUrl(const QString &webUrl) const;
+
+    // Return the PIDs of processes listening on the given TCP port. Used by
+    // forceStop() to kill agents this launcher didn't start (no tracked PID).
+    QList<qint64> findPidsForPort(int port) const;
 
     // Run each agent's versionCommand silently on startup.
     void checkVersions();

@@ -31,6 +31,8 @@ struct Agent
     bool setupDone = false;       // runtime state, persisted in agent_state.json
     bool setupping = false;       // transient UI state, never persisted
     bool checkingVersion = false; // transient UI state: version check in progress
+    QString consoleOutput;        // live stdout/stderr of install/update/setup,
+                                  // shown on the card so the user can see progress
 };
 
 class AgentConfig

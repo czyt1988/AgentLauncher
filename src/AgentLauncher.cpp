@@ -14,6 +14,8 @@
 #include <QPointer>
 #include <QProcess>
 #include <QRegularExpression>
+#include <QSet>
+#include <QSharedPointer>
 #include <QProcessEnvironment>
 #include <QStandardPaths>
 #include <QStringDecoder>
@@ -91,6 +93,10 @@ void AgentLauncher::doLaunch(const QString &id)
         return;
     const Agent &a = m_model->agents().at(row);
     const QString command = a.command;
+
+    // A fresh launch clears any install/setup log so the running card isn't
+    // left showing stale console output.
+    m_model->setConsoleOutput(id, QString());
 
     // Split command into program + arguments on whitespace.
     const QStringList parts = QProcess::splitCommand(command);
@@ -215,6 +221,146 @@ bool AgentLauncher::stop(const QString &id)
     // Re-check so the card flips back to Stopped once the port is down.
     QTimer::singleShot(500, this, &AgentLauncher::checkAll);
     return ok;
+}
+
+void AgentLauncher::forceStop(const QString &id)
+{
+    const int row = m_model->indexOf(id);
+    if (row < 0)
+        return;
+    const Agent &a = m_model->agents().at(row);
+
+    // No tracked PID for agents not started here, so target by port instead.
+    const int port = portFromWebUrl(a.webUrl);
+    if (port < 0) {
+        const QString msg = tr("Cannot determine port from web URL.");
+        qWarning() << "AgentLauncher: cannot force stop" << id << "-" << msg;
+        emit launchFailed(id, msg);
+        return;
+    }
+
+    const QList<qint64> pids = findPidsForPort(port);
+    if (pids.isEmpty()) {
+        const QString msg = tr("No process found listening on port %1; "
+                               "the agent may already be stopped.").arg(port);
+        qWarning() << "AgentLauncher: cannot force stop" << id << "-" << msg;
+        emit launchFailed(id, msg);
+        return;
+    }
+
+    bool anyOk = false;
+    for (const qint64 pid : pids) {
+#ifdef Q_OS_WIN
+        // /F force, /T kills the whole process tree (cmd -> qwen.cmd -> node).
+        const bool ok = QProcess::startDetached(
+            QStringLiteral("taskkill"),
+            { QStringLiteral("/F"), QStringLiteral("/T"),
+              QStringLiteral("/PID"), QString::number(pid) });
+#else
+        const bool ok = QProcess::startDetached(
+            QStringLiteral("kill"),
+            { QStringLiteral("-9"), QString::number(pid) });
+#endif
+        if (ok)
+            anyOk = true;
+    }
+
+    // If this launcher also tracked a PID for the agent, drop it so a later
+    // normal stop() doesn't try to kill an already-dead PID.
+    m_pids.remove(id);
+
+    if (!anyOk) {
+        const QString msg = tr("Failed to stop process (PID %1).")
+                                .arg(pids.constFirst());
+        qWarning() << "AgentLauncher:" << msg;
+        emit launchFailed(id, msg);
+    }
+
+    // Re-check so the card flips back to Stopped once the port is down.
+    QTimer::singleShot(500, this, &AgentLauncher::checkAll);
+}
+
+int AgentLauncher::portFromWebUrl(const QString &webUrl) const
+{
+    if (webUrl.isEmpty())
+        return -1;
+    const QUrl url(webUrl);
+    if (!url.isValid())
+        return -1;
+    const int port = url.port();
+    if (port > 0)
+        return port;
+    // No explicit port: fall back to the scheme default.
+    const QString scheme = url.scheme().toLower();
+    if (scheme == QLatin1String("https"))
+        return 443;
+    if (scheme == QLatin1String("http"))
+        return 80;
+    return -1;
+}
+
+QList<qint64> AgentLauncher::findPidsForPort(int port) const
+{
+    QList<qint64> pids;
+    QSet<qint64> seen;
+
+    QProcess proc;
+#ifdef Q_OS_WIN
+    // netstat -ano prints one row per connection: proto local foreign state PID.
+    // Keep only LISTENING rows whose local address ends with ":<port>" — this
+    // avoids matching the foreign-address column and avoids ":3000" hitting a
+    // longer port like ":53000" (the leading colon is a delimiter).
+    proc.setProgram(QStringLiteral("cmd"));
+    proc.setArguments({QStringLiteral("/c"), QStringLiteral("netstat -ano -p tcp")});
+#else
+    // lsof -ti :<port> prints just the owning PIDs, one per line.
+    proc.setProgram(QStringLiteral("lsof"));
+    proc.setArguments({QStringLiteral("-ti"), QStringLiteral(":%1").arg(port)});
+#endif
+    proc.start();
+    if (!proc.waitForFinished(5000))
+        return pids;
+
+    const QString output = decodeProcessOutput(proc.readAllStandardOutput());
+    const QStringList lines = output.split(QLatin1Char('\n'));
+    const QString portSuffix = QStringLiteral(":%1").arg(port);
+
+    for (const QString &line : lines) {
+        const QString trimmed = line.trimmed();
+        if (trimmed.isEmpty())
+            continue;
+#ifdef Q_OS_WIN
+        const QStringList cols = trimmed.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+        if (cols.size() < 5)
+            continue;
+        bool isListening = false;
+        for (const QString &c : cols) {
+            if (c == QLatin1String("LISTENING")) {
+                isListening = true;
+                break;
+            }
+        }
+        if (!isListening)
+            continue;
+        // cols[0]=proto, cols[1]=local address, cols[2]=foreign, then state, PID.
+        if (!cols.at(1).endsWith(portSuffix, Qt::CaseInsensitive))
+            continue;
+        bool ok = false;
+        const qint64 pid = cols.constLast().toLongLong(&ok);
+        if (ok && pid > 0 && !seen.contains(pid)) {
+            seen.insert(pid);
+            pids.append(pid);
+        }
+#else
+        bool ok = false;
+        const qint64 pid = trimmed.toLongLong(&ok);
+        if (ok && pid > 0 && !seen.contains(pid)) {
+            seen.insert(pid);
+            pids.append(pid);
+        }
+#endif
+    }
+    return pids;
 }
 
 bool AgentLauncher::hasLaunchedAgents() const
@@ -502,6 +648,9 @@ void AgentLauncher::runSetup(const QString &id)
     if (cmd.isEmpty())
         return;
 
+    // Clear any previous output before flipping the card to "setting up" so
+    // the panel never flashes stale text from a prior run when it (re)opens.
+    m_model->setConsoleOutput(id, QString());
     m_model->setSetupping(id, true);
 
     // Write the setup command to a temporary .cmd file and execute that.
@@ -524,37 +673,37 @@ void AgentLauncher::runSetup(const QString &id)
 
     auto *proc = new QProcess(this);
     batchFile->setParent(proc); // cleaned up when proc is deleteLater'd
+    proc->setProcessChannelMode(QProcess::MergedChannels);
     proc->setProgram(QStringLiteral("cmd"));
     proc->setArguments({QStringLiteral("/c"), batchFile->fileName()});
-    // Default channel mode → CREATE_NO_WINDOW → no visible console.
+    // No visible console window; output is captured for live display.
 
     const QString capturedId = id;
     const QString capturedCmd = cmd;
+    QSharedPointer<QString> buffer = QSharedPointer<QString>::create();
+
+    connect(proc, &QProcess::readyReadStandardOutput, this,
+            [this, capturedId, proc, buffer]() {
+                buffer->append(decodeProcessOutput(proc->readAllStandardOutput()));
+                m_model->setConsoleOutput(capturedId, *buffer);
+            });
+
     connect(proc, &QProcess::finished, this,
-            [this, capturedId, capturedCmd, proc](int exitCode, QProcess::ExitStatus) {
+            [this, capturedId, capturedCmd, proc, buffer](int exitCode, QProcess::ExitStatus) {
                 m_model->setSetupping(capturedId, false);
+
+                // Drain any tail bytes, then push the final text to the card.
+                buffer->append(decodeProcessOutput(proc->readAllStandardOutput()));
+                buffer->append(decodeProcessOutput(proc->readAllStandardError()));
+                m_model->setConsoleOutput(capturedId, *buffer);
 
                 if (exitCode == 0) {
                     markSetupDone(capturedId);
-                    // Proceed with the actual launch.
+                    // Proceed with the actual launch (clears the console area).
                     doLaunch(capturedId);
                 } else {
-                    const QString errOutput =
-                        decodeProcessOutput(proc->readAllStandardError()).trimmed();
-                    const QString stdOutput =
-                        decodeProcessOutput(proc->readAllStandardOutput()).trimmed();
-
-                    // Build a detail string showing both stdout and stderr
-                    // so the user can diagnose command-line failures.
-                    QStringList parts;
-                    if (!errOutput.isEmpty())
-                        parts << tr("stderr:\n%1").arg(errOutput);
-                    if (!stdOutput.isEmpty())
-                        parts << tr("stdout:\n%1").arg(stdOutput);
-                    const QString detail = parts.isEmpty()
-                        ? tr("(no output)")
-                        : parts.join(QStringLiteral("\n\n"));
-
+                    const QString detail = buffer->trimmed().isEmpty()
+                        ? tr("(no output)") : buffer->trimmed();
                     emit launchFailed(capturedId,
                         tr("Setup command failed (exit code %1).\n\n"
                            "Command: %2\n\n%3")
@@ -767,44 +916,62 @@ void AgentLauncher::install(const QString &id)
         return;
     }
 
+    // Clear any previous output before flipping the card to "installing" so
+    // the panel never flashes stale text from a prior run when it (re)opens.
+    m_model->setConsoleOutput(id, QString());
     m_model->setInstalling(id, true);
 
     auto *proc = new QProcess(this);
+    // Merge stderr into stdout so both streams surface on one channel and can
+    // be streamed to the card live.
+    proc->setProcessChannelMode(QProcess::MergedChannels);
     proc->setProgram(QStringLiteral("cmd"));
     proc->setArguments({QStringLiteral("/c"), a.installCommand});
-    // Default channel mode → CREATE_NO_WINDOW → no visible console; output is
-    // captured so we can report success/failure in installFinished.
+    // No visible console window; output is captured for live display.
 
     const QString capturedId = id;
     QPointer<QProcess> guard(proc);
     bool *handled = new bool(false);
+    // Accumulator shared between the readyRead and finished handlers so the
+    // streamed text is also reused for the failure-detail message.
+    QSharedPointer<QString> buffer = QSharedPointer<QString>::create();
+
+    // Stream output to the card as it arrives so the user can watch progress
+    // instead of staring at a spinner.
+    connect(proc, &QProcess::readyReadStandardOutput, this,
+            [this, capturedId, guard, buffer]() {
+                if (!guard)
+                    return;
+                buffer->append(decodeProcessOutput(guard->readAllStandardOutput()));
+                m_model->setConsoleOutput(capturedId, *buffer);
+            });
 
     connect(proc, &QProcess::finished, this,
-            [this, capturedId, guard, handled](int exitCode, QProcess::ExitStatus) {
+            [this, capturedId, guard, handled, buffer](int exitCode, QProcess::ExitStatus) {
                 if (*handled)
                     return;
                 *handled = true;
                 m_model->setInstalling(capturedId, false);
 
-                // Read output before deleteLater (reads become no-ops after).
-                const QString output = guard
-                    ? decodeProcessOutput(guard->readAllStandardOutput()) : QString();
-                const QString errOutput = guard
-                    ? decodeProcessOutput(guard->readAllStandardError()) : QString();
-
-                if (guard)
+                // Drain any tail bytes emitted between the last readyRead and
+                // exit, then push the final text to the card.
+                if (guard) {
+                    buffer->append(decodeProcessOutput(guard->readAllStandardOutput()));
+                    buffer->append(decodeProcessOutput(guard->readAllStandardError()));
+                    m_model->setConsoleOutput(capturedId, *buffer);
                     guard->deleteLater();
+                }
                 delete handled;
 
                 if (exitCode == 0) {
                     emit installFinished(capturedId, true, QString());
                 } else {
-                    QString detail = errOutput.isEmpty() ? output : errOutput;
+                    QString detail = buffer->trimmed();
                     if (detail.isEmpty())
                         detail = tr("(no output)");
                     emit installFinished(capturedId, false,
                         tr("Install failed (exit code %1):\n%2")
-                            .arg(exitCode).arg(detail.trimmed()));
+                            .arg(exitCode).arg(detail));
                 }
                 // Re-check version to refresh the card.
                 checkVersion(capturedId);
@@ -847,42 +1014,51 @@ void AgentLauncher::updateTool(const QString &id)
     }
 
     m_model->setInstalling(id, true);
+    m_model->setConsoleOutput(id, QString());
 
     auto *proc = new QProcess(this);
+    proc->setProcessChannelMode(QProcess::MergedChannels);
     proc->setProgram(QStringLiteral("cmd"));
     proc->setArguments({QStringLiteral("/c"), a.updateCommand});
-    // Default channel mode → CREATE_NO_WINDOW → no visible console; output is
-    // captured so we can report success/failure in installFinished.
+    // No visible console window; output is captured for live display.
 
     const QString capturedId = id;
     QPointer<QProcess> guard(proc);
     bool *handled = new bool(false);
+    QSharedPointer<QString> buffer = QSharedPointer<QString>::create();
+
+    connect(proc, &QProcess::readyReadStandardOutput, this,
+            [this, capturedId, guard, buffer]() {
+                if (!guard)
+                    return;
+                buffer->append(decodeProcessOutput(guard->readAllStandardOutput()));
+                m_model->setConsoleOutput(capturedId, *buffer);
+            });
 
     connect(proc, &QProcess::finished, this,
-            [this, capturedId, guard, handled](int exitCode, QProcess::ExitStatus) {
+            [this, capturedId, guard, handled, buffer](int exitCode, QProcess::ExitStatus) {
                 if (*handled)
                     return;
                 *handled = true;
                 m_model->setInstalling(capturedId, false);
 
-                const QString output = guard
-                    ? decodeProcessOutput(guard->readAllStandardOutput()) : QString();
-                const QString errOutput = guard
-                    ? decodeProcessOutput(guard->readAllStandardError()) : QString();
-
-                if (guard)
+                if (guard) {
+                    buffer->append(decodeProcessOutput(guard->readAllStandardOutput()));
+                    buffer->append(decodeProcessOutput(guard->readAllStandardError()));
+                    m_model->setConsoleOutput(capturedId, *buffer);
                     guard->deleteLater();
+                }
                 delete handled;
 
                 if (exitCode == 0) {
                     emit installFinished(capturedId, true, QString());
                 } else {
-                    QString detail = errOutput.isEmpty() ? output : errOutput;
+                    QString detail = buffer->trimmed();
                     if (detail.isEmpty())
                         detail = tr("(no output)");
                     emit installFinished(capturedId, false,
                         tr("Update failed (exit code %1):\n%2")
-                            .arg(exitCode).arg(detail.trimmed()));
+                            .arg(exitCode).arg(detail));
                 }
                 checkVersion(capturedId);
             });
