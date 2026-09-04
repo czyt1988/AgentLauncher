@@ -432,32 +432,128 @@ void AgentLauncher::openConfigDir(const QString &id)
     QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
 }
 
-bool AgentLauncher::updateAgent(const QString &id, const QString &command, const QString &webUrl, const QString &setupCommand)
+namespace {
+
+// Build an Agent from the field map the QML edit form submits. The id comes
+// from the caller (generated or immutable), the icon is resolved so the
+// model always holds a displayable URL.
+Agent agentFromFields(const QVariantMap &f, const QString &id)
 {
-    QList<Agent> &agents = m_model->agents();
-    bool changed = false;
-    for (Agent &a : agents) {
-        if (a.id == id) {
-            a.command = command;
-            a.webUrl = webUrl;
-            a.setupCommand = setupCommand;
-            changed = true;
-            break;
-        }
+    Agent a;
+    a.id = id;
+    a.name = f.value(QStringLiteral("name")).toString().trimmed();
+    a.command = f.value(QStringLiteral("command")).toString().trimmed();
+    a.webUrl = f.value(QStringLiteral("webUrl")).toString().trimmed();
+    a.configDir = f.value(QStringLiteral("configDir")).toString().trimmed();
+    a.icon = AgentConfig::resolveIcon(f.value(QStringLiteral("icon")).toString().trimmed());
+    a.color = f.value(QStringLiteral("color")).toString().trimmed();
+    a.cardColor = f.value(QStringLiteral("cardColor")).toString().trimmed();
+    a.installCommand = f.value(QStringLiteral("installCommand")).toString().trimmed();
+    a.updateCommand = f.value(QStringLiteral("updateCommand")).toString().trimmed();
+    a.versionCommand = f.value(QStringLiteral("versionCommand")).toString().trimmed();
+    a.setupCommand = f.value(QStringLiteral("setupCommand")).toString().trimmed();
+    a.tokenFile = f.value(QStringLiteral("tokenFile")).toString().trimmed();
+    return a;
+}
+
+} // namespace
+
+bool AgentLauncher::addAgent(const QVariantMap &fields)
+{
+    QString id = fields.value(QStringLiteral("id")).toString().trimmed();
+    if (id.isEmpty()) {
+        // Generate from the display name, uniquified with -2, -3, ... suffixes.
+        const QString base = AgentConfig::slugFromName(
+            fields.value(QStringLiteral("name")).toString());
+        id = base;
+        int n = 2;
+        while (m_model->indexOf(id) >= 0)
+            id = base + QLatin1Char('-') + QString::number(n++);
+    } else if (m_model->indexOf(id) >= 0) {
+        return false; // duplicate id (the form prevents this; defensive)
     }
-    if (!changed)
+
+    Agent a = agentFromFields(fields, id);
+    // Empty color would render a broken card until the next restart
+    // (load() assigns palette colors); assign one now.
+    if (a.color.isEmpty())
+        a.color = AgentConfig::paletteColorAt(m_model->agents().size());
+
+    m_model->insertAgent(m_model->agents().size(), a);
+    return saveConfig();
+}
+
+bool AgentLauncher::updateAgentFull(const QString &id, const QVariantMap &fields)
+{
+    const int row = m_model->indexOf(id);
+    if (row < 0)
         return false;
 
-    // Refresh the model view for this row.
-    const int row = m_model->indexOf(id);
-    if (row >= 0) {
-        const QModelIndex idx = m_model->index(row, 0);
-        emit m_model->dataChanged(idx, idx, { AgentModel::CommandRole, AgentModel::WebUrlRole, AgentModel::SetupCommandRole });
-    }
+    Agent a = agentFromFields(fields, id); // id is immutable
+    if (a.color.isEmpty())
+        a.color = AgentConfig::paletteColorAt(row);
 
-    // Persist to disk.
+    // Preserve runtime state flags; only the persisted fields change.
+    const Agent &old = m_model->agents().at(row);
+    a.running = old.running;
+    a.launching = old.launching;
+    a.installed = old.installed;
+    a.version = old.version;
+    a.installing = old.installing;
+    a.setupDone = old.setupDone;
+    a.setupping = old.setupping;
+    a.checkingVersion = old.checkingVersion;
+    a.consoleOutput = old.consoleOutput;
+
+    m_model->agents()[row] = a;
+    const QModelIndex idx = m_model->index(row, 0);
+    emit m_model->dataChanged(idx, idx); // no roles = all roles
+
+    return saveConfig();
+}
+
+bool AgentLauncher::removeAgent(const QString &id)
+{
+    if (!m_model->removeAgentById(id))
+        return false;
+
+    // Record deleted built-ins so migrate() does not resurrect them.
+    if (AgentConfig::defaultAgentIds().contains(id) && !m_removedIds.contains(id))
+        m_removedIds.append(id);
+
+    // The process itself keeps running on purpose (documented in the UI).
+    m_pids.remove(id);
+    m_launchEpoch.remove(id);
+    m_versionEpoch.remove(id);
+    return saveConfig();
+}
+
+bool AgentLauncher::restoreDefaults()
+{
+    m_removedIds.clear();
+    QList<Agent> agents = m_model->agents();
+    AgentConfig::appendMissingDefaults(agents);
+    m_model->setAgents(agents); // beginResetModel/endResetModel inside
+    return saveConfig();
+}
+
+bool AgentLauncher::isDefaultAgent(const QString &id) const
+{
+    return AgentConfig::defaultAgentIds().contains(id);
+}
+
+QString AgentLauncher::configFilePath() const
+{
+    return AgentConfig::configFilePath();
+}
+
+bool AgentLauncher::saveConfig()
+{
     AgentConfig cfg;
-    cfg.setAgents(agents);
+    cfg.setAgents(m_model->agents());
+    cfg.setRemovedIds(m_removedIds);
+    // Preserve the root window title across saves.
+    cfg.setTitle(m_title);
     return cfg.save();
 }
 
