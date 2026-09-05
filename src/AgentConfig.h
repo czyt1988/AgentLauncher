@@ -3,6 +3,7 @@
 
 #include <QList>
 #include <QString>
+#include <QStringList>
 
 #include <algorithm>
 
@@ -47,31 +48,45 @@ public:
     QString title() const { return m_title; }
     void setTitle(const QString &title) { m_title = title; }
 
-    void updateAgent(const QString &id, const QString &command, const QString &webUrl);
+    // Ids of built-in agents the user deleted (Settings page). Persisted as
+    // the root "removed" array so migrate() does not resurrect them.
+    QStringList removedIds() const { return m_removedIds; }
+    void setRemovedIds(const QStringList &ids) { m_removedIds = ids; }
+
+    // The bundled default agent definitions from :/config/default_agents.json.
+    // outTitle, when not null, receives the default root title.
+    static QList<Agent> loadDefaults(QString *outTitle = nullptr);
+
+    // Ids of the bundled default agents.
+    static QStringList defaultAgentIds();
+
+    // Append bundled defaults whose id is not yet in the list. Returns true
+    // when the list changed. Used by "Restore default launchers".
+    static bool appendMissingDefaults(QList<Agent> &agents);
+
+    // Turn a display name into a config id: "Kimi Code" -> "kimi-code".
+    static QString slugFromName(const QString &name);
+
+    // Catppuccin Mocha palette color by position (auto color assignment).
+    static QString paletteColorAt(int index);
+
+    // Resolve an icon string to a displayable image URL: qrc:/, http(s)://,
+    // file:// pass through; an existing local file becomes a file:/// URL;
+    // anything else (including empty) falls back to qrc:/icons/default.svg.
+    static QString resolveIcon(const QString &raw);
 
     static QString configFilePath();
 
 private:
     QList<Agent> m_agents;
     QString m_title;
+    QStringList m_removedIds;
 
-    QList<Agent> parse(const QByteArray &data, QString &outTitle) const;
-
-    // Resolve an icon string to a usable image URL:
-    //   empty            → qrc:/icons/default.svg
-    //   qrc:/...         → as-is
-    //   http(s)://...    → as-is
-    //   local file path  → expand env vars, check existence, convert to
-    //                      file:/// URL; fall back to default if not found
-    static QString resolveIcon(const QString &raw);
-
-    // Expand %VAR% environment variables and ~ in a path.
-    static QString expandEnv(const QString &path);
+    QList<Agent> parse(const QByteArray &data, QString &outTitle);
 
     // Fill in empty fields from the bundled default config and add missing
-    // agents. Called after load() so on-disk configs created from older
-    // defaults (missing installCommand/updateCommand/versionCommand) get
-    // the new fields populated automatically.
+    // agents (skipping removed ids). Called after load() so on-disk configs
+    // created from older defaults get the new fields populated automatically.
     void migrate(const QList<Agent> &defaults, const QString &defaultTitle);
 
     // Assign a color from the built-in palette to every agent whose `color`
@@ -79,6 +94,9 @@ private:
     // the palette based on the agent's position in the list. Returns true if
     // any color was assigned (so the caller can persist).
     bool assignPaletteColors();
+
+    // Expand %VAR% environment variables and ~ in a path.
+    static QString expandEnv(const QString &path);
 };
 
 #endif // AGENTCONFIG_H

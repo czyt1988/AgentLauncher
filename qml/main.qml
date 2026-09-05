@@ -178,7 +178,7 @@ ApplicationWindow {
                         delegate: AgentCard {
                             width: 260
                             onConfigureRequested: function(id) {
-                                stack.push(configPageComp, { "agentId": id });
+                                stack.push(agentEditPageComp, { "agentId": id })
                             }
                         }
                     }
@@ -188,8 +188,39 @@ ApplicationWindow {
     }
 
     Component {
-        id: configPageComp
-        ConfigPage {}
+        id: settingsPageComp
+        SettingsPage {}
+    }
+
+    Component {
+        id: agentEditPageComp
+        AgentEditPage {}
+    }
+
+    // Floating settings entry in the bottom-right corner.
+    Button {
+        id: settingsButton
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 20
+        width: 44
+        height: 44
+
+        ToolTip.visible: hovered
+        ToolTip.delay: 300
+        ToolTip.text: qsTr("Settings")
+
+        background: Rectangle {
+            radius: 12
+            color: parent.down ? "#45475a" : (parent.hovered ? "#4a4d62" : "#313244")
+            border.color: "#45475a"
+        }
+        contentItem: Image {
+            source: "qrc:/icons/gear.svg"
+            sourceSize: Qt.size(22, 22)
+            fillMode: Image.PreserveAspectFit
+        }
+        onClicked: stack.push(settingsPageComp)
     }
 
     // Exit confirmation: shown when the user closes the window while one or

@@ -44,6 +44,13 @@ public:
     void setAgents(const QList<Agent> &agents);
     QList<Agent> &agents() { return m_agents; }
 
+    // Insert an agent at the given row (out-of-range rows append). Emits the
+    // usual rowsInserted signals so bound views refresh.
+    void insertAgent(int row, const Agent &agent);
+
+    // Remove the agent with the given id. Returns false when not found.
+    bool removeAgentById(const QString &id);
+
     Q_INVOKABLE int indexOf(const QString &id) const;
     Q_INVOKABLE QVariantMap agent(const QString &id) const;
 

@@ -28,7 +28,8 @@ src/         C++ backend
 qml/         QML UI
   main.qml            home card grid + StackView
   AgentCard.qml       single card (start/configure + running highlight)
-  ConfigPage.qml      per-agent settings (command, web URL, config dir)
+  AgentEditPage.qml   per-agent settings (command, web URL, config dir)
+  SettingsPage.qml    launcher management (add/edit/delete launchers)
 config/      default_agents.json (bundled as Qt resource)
 icons/       SVG icons (bundled as Qt resources)
 docs/        MkDocs site (English + zh/)

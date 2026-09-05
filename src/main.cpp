@@ -33,6 +33,10 @@ int main(int argc, char *argv[])
     model.setAgents(config.agents());
 
     AgentLauncher launcher(&model);
+    // Deletion records for built-in agents, persisted in agents.json.
+    launcher.setRemovedIds(config.removedIds());
+    // Root window title, preserved by the launcher across config saves.
+    launcher.setTitle(config.title());
     launcher.start();
 
     QQmlApplicationEngine engine;

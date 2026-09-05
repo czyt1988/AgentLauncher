@@ -80,6 +80,26 @@ void AgentModel::setAgents(const QList<Agent> &agents)
     endResetModel();
 }
 
+void AgentModel::insertAgent(int row, const Agent &agent)
+{
+    if (row < 0 || row > m_agents.size())
+        row = m_agents.size();
+    beginInsertRows(QModelIndex(), row, row);
+    m_agents.insert(row, agent);
+    endInsertRows();
+}
+
+bool AgentModel::removeAgentById(const QString &id)
+{
+    const int row = indexOf(id);
+    if (row < 0)
+        return false;
+    beginRemoveRows(QModelIndex(), row, row);
+    m_agents.removeAt(row);
+    endRemoveRows();
+    return true;
+}
+
 int AgentModel::indexOf(const QString &id) const
 {
     for (int i = 0; i < m_agents.size(); ++i) {

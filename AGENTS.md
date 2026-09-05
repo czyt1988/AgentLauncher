@@ -25,11 +25,12 @@ cmake --build build
 
 ```
 src/           C++ backend: AgentConfig, AgentModel, AgentLauncher, main.cpp
-qml/           QML UI: main.qml, AgentCard.qml, ConfigPage.qml
+qml/           QML UI: main.qml, AgentCard.qml, AgentEditPage.qml, SettingsPage.qml
 config/        default_agents.json (bundled as a Qt resource)
 icons/         SVG icons (bundled as Qt resources)
 translations/  .ts translation sources (compiled to .qm at build time, embedded as :/i18n/)
 docs/          MkDocs site (English + zh/)
+tests/         QtTest unit tests (tst_core.cpp)
 ```
 
 ## Config schema (agents.json)
@@ -38,6 +39,16 @@ The root object has an optional `title` field (string). When set, it
 overrides the application window title; when empty or absent, the default
 `AgentLauncher` title is used. All other root-level content is the `agents`
 array described below.
+
+An optional root `removed` array lists ids of built-in agents the user
+deleted in the Settings page. `AgentConfig::migrate()` skips these ids when
+merging defaults, so deleted built-ins stay deleted across restarts. The
+"Restore default launchers" button in Settings clears this list and
+re-appends the missing defaults.
+
+Agents can also be added, edited, and deleted from the Settings page
+(bottom-right gear button); the UI writes the same `agents.json` via
+`AgentLauncher::addAgent()` / `updateAgentFull()` / `removeAgent()`.
 
 Each agent object has: `id`, `name`, `command`, `webUrl`, `configDir`, `icon`,
 `color`, `cardColor`, `installCommand`, `updateCommand`, `versionCommand`,

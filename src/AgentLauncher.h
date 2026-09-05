@@ -6,6 +6,8 @@
 #include <QHash>
 #include <QList>
 #include <QObject>
+#include <QStringList>
+#include <QVariantMap>
 
 class QNetworkAccessManager;
 class QNetworkReply;
@@ -37,7 +39,6 @@ public:
     Q_INVOKABLE void forceStop(const QString &id);
     Q_INVOKABLE void openWeb(const QString &id);
     Q_INVOKABLE void openConfigDir(const QString &id);
-    Q_INVOKABLE bool updateAgent(const QString &id, const QString &command, const QString &webUrl, const QString &setupCommand);
     Q_INVOKABLE void install(const QString &id);
     Q_INVOKABLE void updateTool(const QString &id);
     Q_INVOKABLE void resetSetup(const QString &id);
@@ -51,6 +52,28 @@ public:
 
     // Start the background health-check polling.
     void start();
+
+    // Launcher management (Settings page). All three persist to agents.json
+    // and return false when the file could not be written (or, for addAgent,
+    // when the requested id already exists).
+    Q_INVOKABLE bool addAgent(const QVariantMap &fields);
+    Q_INVOKABLE bool updateAgentFull(const QString &id, const QVariantMap &fields);
+    Q_INVOKABLE bool removeAgent(const QString &id);
+    Q_INVOKABLE bool restoreDefaults();
+
+    // True when the id belongs to the bundled default_agents.json.
+    Q_INVOKABLE bool isDefaultAgent(const QString &id) const;
+
+    // Path of the on-disk agents.json (shown in error messages).
+    Q_INVOKABLE QString configFilePath() const;
+
+    // Deleted built-in ids to persist across restarts; loaded once at
+    // startup by main.cpp.
+    void setRemovedIds(const QStringList &ids) { m_removedIds = ids; }
+
+    // Root window title from agents.json; loaded once at startup so saves
+    // preserve a hand-edited custom title.
+    void setTitle(const QString &title) { m_title = title; }
 
 signals:
     // Emitted when a launch/stop attempt fails. The UI shows an at-place
@@ -84,6 +107,16 @@ private:
     // invalidate stale delayed-clear timers so a re-check can't have its
     // spinner cleared early by a timer from a previous check.
     QHash<QString, int> m_versionEpoch;
+
+    // Deleted built-in ids, persisted as the root "removed" array so the
+    // migration on next startup does not resurrect them.
+    QStringList m_removedIds;
+
+    // Root window title from agents.json, preserved across saves.
+    QString m_title;
+
+    // Write the model's agents + removal records to agents.json.
+    bool saveConfig();
 
     QString expandEnv(const QString &path) const;
 

@@ -48,10 +48,12 @@ qt_add_resources(AgentLauncher "app_resources"
         icons/bot.svg
         icons/download.svg
         icons/download-hover.svg
+        icons/gear.svg
         icons/app-icon.png
         qml/main.qml
         qml/AgentCard.qml
-        qml/ConfigPage.qml
+        qml/AgentEditPage.qml
+        qml/SettingsPage.qml
 )
 
 target_link_libraries(AgentLauncher PRIVATE
@@ -70,7 +72,8 @@ qt6_create_translation(QM_FILES
     ${APP_HEADERS}
     qml/main.qml
     qml/AgentCard.qml
-    qml/ConfigPage.qml
+    qml/AgentEditPage.qml
+    qml/SettingsPage.qml
     translations/agentlauncher_zh_CN.ts
 )
 
@@ -91,3 +94,34 @@ set_target_properties(AgentLauncher PROPERTIES
     WIN32_EXECUTABLE ON
     MACOSX_BUNDLE ON
 )
+
+# --- Unit tests ---------------------------------------------------------------
+# Isolated from the real user config via QStandardPaths test mode (see
+# tests/tst_core.cpp). Disable with -DBUILD_TESTING=OFF (e.g. if the Qt
+# installation lacks the Test component).
+option(BUILD_TESTING "Build the unit test target" ON)
+
+if (BUILD_TESTING)
+    find_package(Qt6 6.5 REQUIRED COMPONENTS Test)
+    enable_testing()
+    qt_add_executable(AgentLauncherTests
+        tests/tst_core.cpp
+        src/AgentConfig.cpp
+        src/AgentModel.cpp
+        src/AgentLauncher.cpp
+    )
+    # tst_core.cpp includes "AgentConfig.h" from src/.
+    target_include_directories(AgentLauncherTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    qt_add_resources(AgentLauncherTests "test_resources"
+        PREFIX "/"
+        FILES
+            config/default_agents.json
+    )
+    target_link_libraries(AgentLauncherTests PRIVATE
+        Qt6::Core
+        Qt6::Gui
+        Qt6::Network
+        Qt6::Test
+    )
+    add_test(NAME AgentLauncherTests COMMAND AgentLauncherTests)
+endif()

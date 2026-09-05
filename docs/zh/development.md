@@ -28,7 +28,8 @@ src/         C++ 后端
 qml/         QML 界面
   main.qml            首页卡片网格 + StackView
   AgentCard.qml       单卡片（启动/配置 + 运行中高亮）
-  ConfigPage.qml      单 agent 设置页（命令、web 地址、配置目录）
+  AgentEditPage.qml   单 agent 设置页（命令、web 地址、配置目录）
+  SettingsPage.qml    启动器管理（添加/编辑/删除）
 config/      default_agents.json（打包为 Qt 资源）
 icons/       SVG 图标（打包为 Qt 资源）
 docs/        MkDocs 站点（英文 + zh/）

@@ -31,13 +31,8 @@ void AgentConfig::load()
     }
 
     // Load the bundled default config for migration fallback.
-    QList<Agent> defaults;
     QString defaultTitle;
-    {
-        QFile def(QStringLiteral(":/config/default_agents.json"));
-        if (def.open(QIODevice::ReadOnly))
-            defaults = parse(def.readAll(), defaultTitle);
-    }
+    const QList<Agent> defaults = loadDefaults(&defaultTitle);
 
     if (!file.open(QIODevice::ReadOnly)) {
         // Fall back to the bundled default directly.
@@ -80,6 +75,12 @@ bool AgentConfig::save()
     QJsonObject root;
     root[QStringLiteral("title")] = m_title;
     root[QStringLiteral("agents")] = arr;
+    if (!m_removedIds.isEmpty()) {
+        QJsonArray removed;
+        for (const QString &id : m_removedIds)
+            removed.append(id);
+        root[QStringLiteral("removed")] = removed;
+    }
 
     const QString path = configFilePath();
     QDir().mkpath(QFileInfo(path).absolutePath());
@@ -91,29 +92,22 @@ bool AgentConfig::save()
     return true;
 }
 
-void AgentConfig::updateAgent(const QString &id, const QString &command, const QString &webUrl)
-{
-    for (Agent &a : m_agents) {
-        if (a.id == id) {
-            a.command = command;
-            a.webUrl = webUrl;
-            break;
-        }
-    }
-}
-
 QString AgentConfig::configFilePath()
 {
     const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
     return dir + QStringLiteral("/agents.json");
 }
 
-QList<Agent> AgentConfig::parse(const QByteArray &data, QString &outTitle) const
+QList<Agent> AgentConfig::parse(const QByteArray &data, QString &outTitle)
 {
     QList<Agent> result;
     const QJsonDocument doc = QJsonDocument::fromJson(data);
     const QJsonObject root = doc.object();
     outTitle = root.value(QStringLiteral("title")).toString();
+    m_removedIds.clear();
+    const QJsonArray removed = root.value(QStringLiteral("removed")).toArray();
+    for (const QJsonValue &v : removed)
+        m_removedIds.append(v.toString());
     const QJsonArray arr = root.value(QStringLiteral("agents")).toArray();
     for (const QJsonValue &v : arr) {
         const QJsonObject o = v.toObject();
@@ -148,6 +142,9 @@ void AgentConfig::migrate(const QList<Agent> &defaults, const QString &defaultTi
     }
 
     for (const Agent &def : defaults) {
+        // User deleted this built-in agent — do not resurrect it.
+        if (m_removedIds.contains(def.id))
+            continue;
         auto it = std::find_if(m_agents.begin(), m_agents.end(),
             [&](const Agent &a) { return a.id == def.id; });
         if (it == m_agents.end()) {
@@ -184,6 +181,18 @@ void AgentConfig::migrate(const QList<Agent> &defaults, const QString &defaultTi
 
 bool AgentConfig::assignPaletteColors()
 {
+    bool changed = false;
+    for (int i = 0; i < m_agents.size(); ++i) {
+        if (m_agents[i].color.isEmpty()) {
+            m_agents[i].color = paletteColorAt(i);
+            changed = true;
+        }
+    }
+    return changed;
+}
+
+QString AgentConfig::paletteColorAt(int index)
+{
     // Catppuccin Mocha palette — vibrant colors that read well on the dark
     // card background (#313244).
     static const QStringList palette = {
@@ -196,15 +205,7 @@ bool AgentConfig::assignPaletteColors()
         QStringLiteral("#cba6f7"), // Mauve
         QStringLiteral("#f5c2e7"), // Pink
     };
-
-    bool changed = false;
-    for (int i = 0; i < m_agents.size(); ++i) {
-        if (m_agents[i].color.isEmpty()) {
-            m_agents[i].color = palette[i % palette.size()];
-            changed = true;
-        }
-    }
-    return changed;
+    return palette.at(((index % palette.size()) + palette.size()) % palette.size());
 }
 
 // --- Icon resolution --------------------------------------------------------
@@ -214,10 +215,11 @@ QString AgentConfig::resolveIcon(const QString &raw)
     if (raw.isEmpty())
         return QStringLiteral("qrc:/icons/default.svg");
 
-    // Built-in resources and remote URLs are used as-is.
+    // Built-in resources, remote URLs and file URLs are used as-is.
     if (raw.startsWith(QStringLiteral("qrc:/"))
         || raw.startsWith(QStringLiteral("http://"))
-        || raw.startsWith(QStringLiteral("https://")))
+        || raw.startsWith(QStringLiteral("https://"))
+        || raw.startsWith(QStringLiteral("file://")))
         return raw;
 
     // Treat anything else as a local file path. Expand environment variables
@@ -253,4 +255,60 @@ QString AgentConfig::expandEnv(const QString &path)
     out.replace(QStringLiteral("~/"),
                 QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + QStringLiteral("/"));
     return out;
+}
+
+// --- Default config helpers ---------------------------------------------------
+
+QList<Agent> AgentConfig::loadDefaults(QString *outTitle)
+{
+    QFile def(QStringLiteral(":/config/default_agents.json"));
+    if (!def.open(QIODevice::ReadOnly)) {
+        if (outTitle)
+            outTitle->clear();
+        return {};
+    }
+    QString title;
+    const QList<Agent> agents = AgentConfig().parse(def.readAll(), title);
+    if (outTitle)
+        *outTitle = title;
+    return agents;
+}
+
+QStringList AgentConfig::defaultAgentIds()
+{
+    QStringList ids;
+    const QList<Agent> defaults = loadDefaults();
+    for (const Agent &a : defaults)
+        ids.append(a.id);
+    return ids;
+}
+
+bool AgentConfig::appendMissingDefaults(QList<Agent> &agents)
+{
+    bool changed = false;
+    const QList<Agent> defaults = loadDefaults();
+    for (const Agent &def : defaults) {
+        const bool exists = std::any_of(agents.cbegin(), agents.cend(),
+            [&](const Agent &a) { return a.id == def.id; });
+        if (!exists) {
+            agents.append(def);
+            changed = true;
+        }
+    }
+    return changed;
+}
+
+QString AgentConfig::slugFromName(const QString &name)
+{
+    QString s = name.toLower().trimmed();
+    s.remove(QRegularExpression(QStringLiteral("[^a-z0-9\\s_-]")));
+    s.replace(QRegularExpression(QStringLiteral("[\\s_]+")), QStringLiteral("-"));
+    s.replace(QRegularExpression(QStringLiteral("-+")), QStringLiteral("-"));
+    while (s.startsWith(QLatin1Char('-')))
+        s.remove(0, 1);
+    while (s.endsWith(QLatin1Char('-')))
+        s.chop(1);
+    if (s.isEmpty())
+        s = QStringLiteral("agent");
+    return s;
 }
