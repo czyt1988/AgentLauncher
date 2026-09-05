@@ -31,8 +31,9 @@ QT_MIN_VERSION="6.5"
 BUILD_DIR="build-release"
 DIST_DIR="dist/AgentLauncher"
 
-# Version number (used in the zip file name)
-VERSION="1.0.0"
+# Version number (used in the zip file name). Leave empty to read it
+# automatically from the project() call in CMakeLists.txt.
+VERSION=""
 
 # ============================================================================
 #  Qt / MSVC auto-detection
@@ -208,7 +209,17 @@ trap 'echo ""; read -rp "Press Enter to close..."' EXIT
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
-ZIP_NAME="AgentLauncher-${VERSION}-win64.zip"
+# Derive version from CMakeLists.txt unless VERSION was set explicitly above.
+if [[ -z "${VERSION:-}" ]]; then
+    VERSION="$(sed -nE 's/^project\([A-Za-z0-9_]+[[:space:]]+VERSION[[:space:]]+([0-9.]+).*/\1/p' CMakeLists.txt | head -n1)"
+    if [[ -z "$VERSION" ]]; then
+        echo "Error: could not read version from CMakeLists.txt; set VERSION in this script." >&2
+        exit 1
+    fi
+fi
+echo "Version: $VERSION"
+
+ZIP_NAME="AgentLauncher-${VERSION}-win64-Portable.zip"
 
 # Locate Qt (auto-detect, or use the QT_PREFIX override).
 QT_PREFIX="$(find_qt_prefix || true)"
@@ -227,6 +238,35 @@ if ! command -v dumpbin &>/dev/null; then
         eval "$(cmd //c "\"$VCVARS\" >nul 2>nul && set" 2>/dev/null | sed -E 's/^([A-Za-z0-9_]+)=(.*)$/export \1="\2"/')"
     else
         echo "Warning: dumpbin not on PATH and no MSVC vcvars64.bat found; windeployqt may fail." >&2
+    fi
+fi
+
+# A stale CMake cache left over after the project folder was moved or renamed
+# makes configure fail with a source-mismatch error. Detect it and clear the
+# build directory so configure can regenerate from scratch.
+if [[ -f "$BUILD_DIR/CMakeCache.txt" ]]; then
+    cached_src=""
+    while IFS= read -r line; do
+        [[ "$line" == CMAKE_HOME_DIRECTORY:INTERNAL=* ]] || continue
+        cached_src="${line#CMAKE_HOME_DIRECTORY:INTERNAL=}"
+        break
+    done < "$BUILD_DIR/CMakeCache.txt"
+    if [[ -n "$cached_src" ]]; then
+        # Compare case-insensitively (Windows is case-insensitive and the
+        # cache may store a different drive-letter case than $PWD). Both
+        # values use forward slashes already, so only lowercase + strip a
+        # trailing slash before comparing.
+        cached_norm="${cached_src%/}"; cached_norm="${cached_norm,,}"
+        if [[ "$PWD" =~ ^/([a-zA-Z])/(.*)$ ]]; then
+            cur="${BASH_REMATCH[1]^^}:/${BASH_REMATCH[2]}"
+        else
+            cur="$PWD"
+        fi
+        cur="${cur%/}"; cur="${cur,,}"
+        if [[ "$cached_norm" != "$cur" ]]; then
+            echo "Stale CMake cache in $BUILD_DIR (generated for $cached_src); removing it and reconfiguring."
+            rm -rf "$BUILD_DIR"
+        fi
     fi
 fi
 
